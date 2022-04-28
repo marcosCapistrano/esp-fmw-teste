@@ -1,0 +1,28 @@
+menu "Ausyx"
+
+    config WIFI_SSID
+        string "WiFi SSID"
+        default "AndroidAP"
+        help
+            SSID (network name) for the example to connect to.
+
+    config WIFI_PASSWORD
+        string "WiFi Password"
+        default "password"
+        help
+            WiFi password (WPA or WPA2) for the example to use.
+
+    config WIFI_MAXIMUM_RETRY
+        int "WiFi Maximum retry attempts"
+        default 5
+        help
+            Maximum amount of times it will retry connection before failing.
+
+    config WIFI_MAXIMUM_TIMEOUT
+        int "WiFi Maximum timeout time is ms"
+        default 10000
+        help
+            Maximum amount of times it will retry connection before failing.
+        
+    
+endmenu
