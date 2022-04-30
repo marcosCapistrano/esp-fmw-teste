@@ -15,6 +15,7 @@
 #define MCPWM_TIMER_NUM MCPWM_TIMER_0
 
 static const char *TAG = "TORRADOR_CONTROLLER";
+static _Bool direction = false; 
 
 void peripherals_init(void) {
     const mcpwm_unit_t mcpwm_num = MCPWM_NUM;
@@ -36,9 +37,15 @@ void peripherals_init(void) {
 
 void toggle_fan(_Bool is_on) {
 	if(is_on) {
+		if(direction) {
 		mcpwm_set_signal_high(MCPWM_UNIT_0, MCPWM_TIMER_0, MCPWM_OPR_A);
+		} else {
+		mcpwm_set_signal_high(MCPWM_UNIT_0, MCPWM_TIMER_0, MCPWM_OPR_B);
+		}
 	} else {
+		direction = !direction;
 		mcpwm_set_signal_low(MCPWM_UNIT_0, MCPWM_TIMER_0, MCPWM_OPR_A);
+		mcpwm_set_signal_low(MCPWM_UNIT_0, MCPWM_TIMER_0, MCPWM_OPR_B);
 	}
 }
 
