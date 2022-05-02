@@ -3,6 +3,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 
-void web_server_init(QueueHandle_t queue);
+void web_server_init();
+void web_server_task(void *pvParameters);
 
 #endif

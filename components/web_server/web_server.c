@@ -7,10 +7,10 @@
 #include "esp_spiffs.h"
 #include "freertos/FreeRTOS.h"
 #include "mdns.h"
+#include "common_torrador_controller.h"
 
 static const char *TAG = "WEB_SERVER";
 
-QueueHandle_t queue_to_controller;
 static bool is_on = false;
 
 esp_err_t on_default_url(httpd_req_t *req) {
@@ -61,12 +61,12 @@ esp_err_t on_default_url(httpd_req_t *req) {
 esp_err_t on_fan_url(httpd_req_t *req) {
     is_on = !is_on;
     ESP_LOGI(TAG, "Toggling fan to %d", is_on);
-    long ok = xQueueSend((QueueHandle_t)queue_to_controller, &is_on, 10 / portTICK_PERIOD_MS);
-    if (ok) {
-        httpd_resp_sendstr(req, "OK");
-    } else {
-        httpd_resp_sendstr(req, "ERROR");
-    }
+    // long ok = xQueueSend((QueueHandle_t)queue_to_controller, &is_on, 10 / portTICK_PERIOD_MS);
+    // if (ok) {
+    //     httpd_resp_sendstr(req, "OK");
+    // } else {
+    //     httpd_resp_sendstr(req, "ERROR");
+    // }
     return ESP_OK;
 }
 
@@ -81,7 +81,7 @@ esp_err_t on_fan_url(httpd_req_t *req) {
 //     memset(&ws_pkt, 0 sizeof(httpd_ws_frame_t));
 //     ws_pkt.type = HTTPD_WS_TYPE_TEXT;
 //     ws_pkt.payload = malloc(WS_MAX_SIZE);
-    
+
 //     return ESP_OK;
 // }
 
@@ -91,8 +91,7 @@ void mdns_service_init(void) {
     mdns_instance_name_set("torrador");
 }
 
-void web_server_init(QueueHandle_t queue) {
-    queue_to_controller = queue;
+void web_server_init() {
     httpd_handle_t server = NULL;
     httpd_config_t server_cfg = HTTPD_DEFAULT_CONFIG();
     server_cfg.uri_match_fn = httpd_uri_match_wildcard;
@@ -120,4 +119,24 @@ void web_server_init(QueueHandle_t queue) {
     httpd_register_uri_handler(server, &default_url);
     // httpd_register_uri_handler(server, &web_socket_url);
     mdns_service_init();
+}
+
+void web_server_task(void *pvParameters) {
+    torrador_controller_params_t *params = (torrador_controller_params_t *) pvParameters;
+    QueueHandle_t state_queue = params->state_queue;
+    QueueHandle_t control_queue = params->control_queue;
+
+    torrador_state_t torrador_state = ON;
+    
+    torrador_control_t torrador_control;
+    torrador_control.potencia = 0;
+    torrador_control.cilindro = 0;
+    torrador_control.turbina = 0;
+    torrador_control.state = torrador_state;
+
+    for(;;) {
+        xQueueSendToBack(control_queue, &torrador_control, pdMS_TO_TICKS(100));
+        
+        vTaskDelay(1000);
+    }
 }

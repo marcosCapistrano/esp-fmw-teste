@@ -4,4 +4,4 @@
 void wifi_init(void);
 void wifi_task(void *params);
 
-#endif;
+#endif
