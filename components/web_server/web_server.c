@@ -2,12 +2,12 @@
 
 #include <stdio.h>
 
+#include "common_torrador_controller.h"
 #include "esp_http_server.h"
 #include "esp_log.h"
 #include "esp_spiffs.h"
 #include "freertos/FreeRTOS.h"
 #include "mdns.h"
-#include "common_torrador_controller.h"
 
 static const char *TAG = "WEB_SERVER";
 
@@ -122,21 +122,8 @@ void web_server_init() {
 }
 
 void web_server_task(void *pvParameters) {
-    torrador_controller_params_t *params = (torrador_controller_params_t *) pvParameters;
-    QueueHandle_t state_queue = params->state_queue;
-    QueueHandle_t control_queue = params->control_queue;
+    torrador_controller_params_t *params = (torrador_controller_params_t *)pvParameters;
 
-    torrador_state_t torrador_state = ON;
-    
-    torrador_control_t torrador_control;
-    torrador_control.potencia = 0;
-    torrador_control.cilindro = 0;
-    torrador_control.turbina = 0;
-    torrador_control.state = torrador_state;
-
-    for(;;) {
-        xQueueSendToBack(control_queue, &torrador_control, pdMS_TO_TICKS(100));
-        
-        vTaskDelay(1000);
+    for (;;) {
     }
 }

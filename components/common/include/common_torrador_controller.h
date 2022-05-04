@@ -4,25 +4,30 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 
-typedef enum {
-	ON,
-	PAUSED,
-	COOLER,
-	OFF
+typedef struct {
+    _Bool is_on;
+    int64_t timer_value;
 } torrador_state_t;
 
-typedef struct {
-	uint8_t potencia;
-	uint8_t cilindro;
-	uint8_t turbina;
-	torrador_state_t state;
-} torrador_control_t;
+typedef enum {
+    POTENCIA,
+    CILINDRO,
+    TURBINA,
+    INICIAR,
+    PARAR,
+    PONTO_DE_TORRA
+} control_event_type_t;
 
 typedef struct {
-	QueueHandle_t state_queue;
-	QueueHandle_t control_queue;
+    control_event_type_t type;
+    int value;
+} control_event_t;
+
+typedef struct {
+    QueueHandle_t control_event_queue;
+    QueueHandle_t state_event_queue;
 } torrador_controller_params_t;
 
-torrador_controller_params_t *torrador_controller_params_create(QueueHandle_t state_queue, QueueHandle_t control_queue);
+torrador_controller_params_t *torrador_controller_params_create(QueueHandle_t control_event_queue, QueueHandle_t state_event_queue);
 
 #endif

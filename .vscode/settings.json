@@ -17,6 +17,18 @@
     "event_groups.h": "c",
     "esp_err.h": "c",
     "web_server.h": "c",
-    "mcpwm.h": "c"
+    "mcpwm.h": "c",
+    "*.tcc": "c",
+    "optional": "c",
+    "istream": "c",
+    "ostream": "c",
+    "ratio": "c",
+    "system_error": "c",
+    "array": "c",
+    "functional": "c",
+    "regex": "c",
+    "tuple": "c",
+    "type_traits": "c",
+    "utility": "c"
   }
 }
