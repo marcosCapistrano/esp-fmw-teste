@@ -2,7 +2,7 @@
 
 #include <stdio.h>
 
-#include "common_torrador_controller.h"
+#include "common_params.h"
 #include "esp_http_server.h"
 #include "esp_log.h"
 #include "esp_spiffs.h"
@@ -122,7 +122,7 @@ void web_server_init() {
 }
 
 void web_server_task(void *pvParameters) {
-    torrador_controller_params_t *params = (torrador_controller_params_t *)pvParameters;
+    controller_params_t params = (controller_params_t)pvParameters;
 
     for (;;) {
     }

@@ -3,7 +3,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "common_torrador_controller.h"
+#include "common_params.h"
+#include "controller.h"
 #include "database_controller.h"
 #include "driver/gpio.h"
 #include "esp_freertos_hooks.h"
@@ -12,19 +13,20 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 #include "freertos/task.h"
+#include "lcd_gui.h"
 #include "lvgl/lvgl.h"
 #include "lvgl_helpers.h"
 #include "nvs_flash.h"
-#include "torrador_controller.h"
 #include "web_server.h"
 #include "wifi_connect.h"
-#include "lcd_gui.h"
-// #include "lcd_gui.h"
 
 // static const char* TAG = "MAIN";
 
-static QueueHandle_t state_event_queue;    // Queue "mailbox" usada pelo controlador para avisar IHM e web_server de mudanças
-static QueueHandle_t control_event_queue;  // Queue usada pela IHM e pelo web_server para avisar o controlador de inputs
+static QueueHandle_t stage_control_queue;
+static QueueHandle_t input_control_queue;
+
+static QueueHandle_t stage_notify_queue;
+static QueueHandle_t output_notify_queue;
 
 void app_main(void) {
     esp_err_t nvs = nvs_flash_init();
@@ -36,16 +38,16 @@ void app_main(void) {
 
     // database_controller_t *database_controller = database_controller_create();
 
-    state_event_queue = xQueueCreate(1, sizeof(torrador_state_t));
-    control_event_queue = xQueueCreate(10, sizeof(control_event_t));
-    torrador_controller_params_t *torrador_controller_params = torrador_controller_params_create(control_event_queue, state_event_queue);
+    input_control_queue = xQueueCreate(1, sizeof(input_event_t));
+    output_notify_queue = xQueueCreate(1, sizeof(output_event_t));
 
-    wifi_init();
-    web_server_init();
-    peripherals_init();
+    controller_params_t controller_params = controller_params_init(input_control_queue, output_notify_queue);
 
-    xTaskCreatePinnedToCore(wifi_task, "WIFI_TASK", 8192, NULL, 0, NULL, 0);
-    xTaskCreatePinnedToCore(torrador_controller_task, "TORRADOR_CONTROLLER_TASK", 2048, torrador_controller_params, 5, NULL, 1);
+    // wifi_init();
+    // web_server_init();
+
+    // xTaskCreatePinnedToCore(wifi_task, "WIFI_TASK", 8192, NULL, 0, NULL, 0);
+    xTaskCreatePinnedToCore(controller_task, "TORRADOR_CONTROLLER_TASK", 2048, controller_params, 5, NULL, 1);
     // xTaskCreatePinnedToCore(web_server_task, "WEB_SERVER_TASK", 8192, torrador_controller_params, 2, NULL, 1);
-    xTaskCreatePinnedToCore(lcd_gui_task, "LCD_GUI_TASK", 8192, torrador_controller_params, 5, NULL, 1);
+    xTaskCreatePinnedToCore(lcd_gui_task, "LCD_GUI_TASK", 8192, controller_params, 5, NULL, 1);
 }

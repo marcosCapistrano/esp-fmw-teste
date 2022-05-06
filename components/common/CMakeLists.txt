@@ -1,2 +1,2 @@
-idf_component_register(SRCS "common_torrador_controller.c"
+idf_component_register(SRCS "common_params.c"
                     INCLUDE_DIRS "include")

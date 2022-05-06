@@ -1,20 +1,21 @@
 #include "lcd_gui.h"
 
-#include "time.h"
-
 #include <lvgl.h>
 #include <lvgl_esp32_drivers/lvgl_helpers.h>
 #include <stdio.h>
 
-#include "common_torrador_controller.h"
+#include "common_params.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 #include "freertos/task.h"
+#include "time.h"
 
 #define AUSYX_HOR_RES 480
 #define AUSYX_VER_RES 320
 #define LV_TICK_PERIOD_MS 1
+
+static const char *TAG = "LCD_GUI";
 
 static lv_disp_draw_buf_t disp_buf;
 static lv_disp_drv_t disp_drv;
@@ -22,22 +23,65 @@ static lv_indev_drv_t indev_drv;
 static lv_indev_t *indev;
 
 static SemaphoreHandle_t xGuiSemaphore;
-static QueueHandle_t control_event_queue;
-static QueueHandle_t state_event_queue;
+static QueueHandle_t input_control_queue;
+static QueueHandle_t output_notify_queue;
+
+static _Bool started = false;
+static _Bool cooler = false;
+static lv_obj_t *st_btn;
+static lv_obj_t *st_btn_label;
+static lv_obj_t *cooler_btn;
+static lv_obj_t *cooler_btn_label;
 
 static lv_obj_t *timer;
 static lv_obj_t *temp_grao;
 static lv_obj_t *temp_ar;
 
 typedef struct {
-    control_event_type_t event_type;
+    input_t input_type;
     lv_obj_t *label;
 } arc_event_user_data_t;
 
 static void lv_tick_task(void *arg);
 
-static void start_event_cb(lv_event_t *event) {
-    xQueueSendToBack(control_event_queue, &(control_event_t){.type = INICIAR}, 0);
+static void st_toggle_event_cb(lv_event_t *e) {
+    lv_obj_t *label = lv_event_get_user_data(e);
+
+    started = !started;
+
+    if (st_btn_label == NULL) {
+        ESP_LOGE(TAG, "LABEL NULA");
+    } else {
+        ESP_LOGE(TAG, "NAO NULA A LABEL");
+    }
+
+    if (started) {
+        lv_label_set_text(label, "Parar");
+    } else {
+        lv_label_set_text(label, "Iniciar");
+    }
+
+    input_event_t input_event = {STAGE, PRE_HEATING, INPUT_NONE, 0};
+
+    xQueueSendToBack(
+        input_control_queue, &input_event, 0);
+}
+
+static void cooler_toggle_event_cb(lv_event_t *e) {
+    lv_obj_t *label = lv_event_get_user_data(e);
+
+    cooler = !cooler;
+
+    if (cooler) {
+        lv_label_set_text(label, "Desligar Resf.");
+    } else {
+        lv_label_set_text(label, "Ligar Resf.");
+    }
+
+    input_event_t input_event = {STAGE, COOLER, INPUT_NONE, 0};
+
+    xQueueSendToBack(
+        input_control_queue, &input_event, 0);
 }
 
 lv_obj_t *base_container(lv_obj_t *view) {
@@ -89,17 +133,17 @@ void arc_event_cb(lv_event_t *e) {
 
     arc_event_user_data_t *user_data = lv_event_get_user_data(e);
     lv_obj_t *label = user_data->label;
-    control_event_type_t event_type = user_data->event_type;
 
-    control_event_t event = {event_type, (int)lv_arc_get_value(arc)};
+    input_t input_type = user_data->input_type;
+    input_event_t input_event = {INPUT, STAGE_NONE, input_type, (int)lv_arc_get_value(arc)};
 
-    ESP_LOGI("arc_event_cb", "arc_event_cb: %d", event_type);
-    xQueueSendToBack(control_event_queue, &event, 100);
+    ESP_LOGI("arc_event_cb", "arc_event_cb: %d", input_type);
+    xQueueSendToBack(input_control_queue, input_event, 100);
 
     lv_label_set_text_fmt(label, "%d", lv_arc_get_value(arc));
 }
 
-lv_obj_t *arc_container(lv_obj_t *view, char *label, char *unit, control_event_type_t event_type) {
+lv_obj_t *arc_container(lv_obj_t *view, char *label, char *unit, input_t input_type) {
     lv_obj_t *container = base_status_container(view, label);
     lv_obj_set_style_bg_color(container, lv_color_make(248, 248, 248), 0);
 
@@ -123,9 +167,7 @@ lv_obj_t *arc_container(lv_obj_t *view, char *label, char *unit, control_event_t
     lv_obj_set_align(arc_unit_label, LV_ALIGN_CENTER);
     lv_obj_set_style_translate_y(arc_unit_label, 10, 0);
 
-    arc_event_user_data_t *user_data = malloc(sizeof(arc_event_user_data_t));
-    user_data->event_type = event_type;
-    user_data->label = arc_label;
+    arc_event_user_data_t *user_data = &(arc_event_user_data_t){input_type, arc_label};
 
     lv_obj_add_event_cb(arc, arc_event_cb, LV_EVENT_VALUE_CHANGED, user_data);
     lv_event_send(arc, LV_EVENT_VALUE_CHANGED, NULL);
@@ -133,12 +175,26 @@ lv_obj_t *arc_container(lv_obj_t *view, char *label, char *unit, control_event_t
     return container;
 }
 
-lv_obj_t *button_container(lv_obj_t *view, char *label) {
+lv_obj_t *st_button(lv_obj_t *view) {
     lv_obj_t *button = lv_btn_create(view);
-    lv_obj_t *button_label = lv_label_create(button);
+    lv_obj_t *btn_label = lv_label_create(button);
+    lv_obj_add_flag(button, LV_OBJ_FLAG_CHECKABLE);
+    lv_obj_add_event_cb(button, st_toggle_event_cb, LV_EVENT_CLICKED, btn_label);
 
-    lv_label_set_text(button_label, label);
-    lv_obj_center(button_label);
+    lv_label_set_text(btn_label, "Iniciar");
+    lv_obj_center(btn_label);
+
+    return button;
+}
+
+lv_obj_t *cooler_button(lv_obj_t *view) {
+    lv_obj_t *button = lv_btn_create(view);
+    lv_obj_t *btn_label = lv_label_create(button);
+    lv_obj_add_flag(button, LV_OBJ_FLAG_CHECKABLE);
+    lv_obj_add_event_cb(button, cooler_toggle_event_cb, LV_EVENT_CLICKED, btn_label);
+
+    lv_label_set_text(btn_label, "Ligar Resf.");
+    lv_obj_center(btn_label);
 
     return button;
 }
@@ -163,107 +219,110 @@ void create_demo() {
     lv_obj_set_style_pad_all(tab2, 0, 0);
     lv_obj_t *tab3 = lv_tabview_add_tab(tabview, "Receitas");
 
-    lv_obj_t *screen_container = lv_obj_create(tab1);
-    lv_obj_set_size(screen_container, 456, 251);
-    lv_obj_set_style_bg_color(screen_container, lv_color_make(248, 248, 248), 0);
-    lv_obj_set_style_border_width(screen_container, 0, 0);
+    // lv_obj_t *screen_container = lv_obj_create(tab1);
+    // lv_obj_set_size(screen_container, 456, 251);
+    // lv_obj_set_style_bg_color(screen_container, lv_color_make(248, 248, 248), 0);
+    // lv_obj_set_style_border_width(screen_container, 0, 0);
 
-    static lv_coord_t column_dsc[] = {144, 144, 144, LV_GRID_TEMPLATE_LAST};                /*2 columns with 100 and 400 ps width*/
-    static lv_coord_t row_dsc[] = {0.3 * 227, 0.5 * 227, 0.2 * 227, LV_GRID_TEMPLATE_LAST}; /*3 100 px tall rows*/
-    lv_obj_set_grid_dsc_array(screen_container, column_dsc, row_dsc);
-    lv_obj_set_style_pad_all(screen_container, 0, 0);
-    lv_obj_set_style_pad_row(screen_container, 12, 0);
-    lv_obj_set_style_pad_column(screen_container, 12, 0);
+    // static lv_coord_t column_dsc[] = {144, 144, 144, LV_GRID_TEMPLATE_LAST};                /*2 columns with 100 and 400 ps width*/
+    // static lv_coord_t row_dsc[] = {0.3 * 227, 0.5 * 227, 0.2 * 227, LV_GRID_TEMPLATE_LAST}; /*3 100 px tall rows*/
+    // lv_obj_set_grid_dsc_array(screen_container, column_dsc, row_dsc);
+    // lv_obj_set_style_pad_all(screen_container, 0, 0);
+    // lv_obj_set_style_pad_row(screen_container, 12, 0);
+    // lv_obj_set_style_pad_column(screen_container, 12, 0);
 
-    lv_obj_t *timer = timer_container(screen_container);
-    lv_obj_t *temp_container_grao = temp_container(screen_container, "Temp. Grao", temp_grao);
-    lv_obj_t *temp_container_ar = temp_container(screen_container, "Temp. Ar", temp_ar);
+    // lv_obj_t *timer = timer_container(screen_container);
+    // lv_obj_t *temp_container_grao = temp_container(screen_container, "Temp. Grao", temp_grao);
+    // lv_obj_t *temp_container_ar = temp_container(screen_container, "Temp. Ar", temp_ar);
 
-    lv_obj_set_grid_cell(timer, LV_GRID_ALIGN_STRETCH, 0, 1, LV_GRID_ALIGN_STRETCH, 0, 1);
-    lv_obj_set_grid_cell(temp_container_grao, LV_GRID_ALIGN_STRETCH, 1, 1, LV_GRID_ALIGN_STRETCH, 0, 1);
-    lv_obj_set_grid_cell(temp_container_ar, LV_GRID_ALIGN_STRETCH, 2, 1, LV_GRID_ALIGN_STRETCH, 0, 1);
-    lv_obj_set_grid_align(screen_container, LV_GRID_ALIGN_SPACE_BETWEEN, LV_GRID_ALIGN_SPACE_BETWEEN);
-    lv_obj_set_layout(screen_container, LV_LAYOUT_GRID);
+    // lv_obj_set_grid_cell(timer, LV_GRID_ALIGN_STRETCH, 0, 1, LV_GRID_ALIGN_STRETCH, 0, 1);
+    // lv_obj_set_grid_cell(temp_container_grao, LV_GRID_ALIGN_STRETCH, 1, 1, LV_GRID_ALIGN_STRETCH, 0, 1);
+    // lv_obj_set_grid_cell(temp_container_ar, LV_GRID_ALIGN_STRETCH, 2, 1, LV_GRID_ALIGN_STRETCH, 0, 1);
+    // lv_obj_set_grid_align(screen_container, LV_GRID_ALIGN_SPACE_BETWEEN, LV_GRID_ALIGN_SPACE_BETWEEN);
+    // lv_obj_set_layout(screen_container, LV_LAYOUT_GRID);
 
-    lv_obj_t *arc1 = arc_container(screen_container, "Potencia", "%", POTENCIA);
-    lv_obj_t *arc2 = arc_container(screen_container, "Cilindro", "RPM", CILINDRO);
-    lv_obj_t *arc3 = arc_container(screen_container, "Turbina", "%", TURBINA);
+    // lv_obj_t *arc1 = arc_container(screen_container, "Potencia", "%", POTENCIA_INPUT);
+    // lv_obj_t *arc2 = arc_container(screen_container, "Cilindro", "RPM", CILINDRO_INPUT);
+    // lv_obj_t *arc3 = arc_container(screen_container, "Turbina", "%", TURBINA_INPUT);
 
-    lv_obj_set_grid_cell(arc1, LV_GRID_ALIGN_STRETCH, 0, 1, LV_GRID_ALIGN_STRETCH, 1, 1);
-    lv_obj_set_grid_cell(arc2, LV_GRID_ALIGN_STRETCH, 1, 1, LV_GRID_ALIGN_STRETCH, 1, 1);
-    lv_obj_set_grid_cell(arc3, LV_GRID_ALIGN_STRETCH, 2, 1, LV_GRID_ALIGN_STRETCH, 1, 1);
+    // lv_obj_set_grid_cell(arc1, LV_GRID_ALIGN_STRETCH, 0, 1, LV_GRID_ALIGN_STRETCH, 1, 1);
+    // lv_obj_set_grid_cell(arc2, LV_GRID_ALIGN_STRETCH, 1, 1, LV_GRID_ALIGN_STRETCH, 1, 1);
+    // lv_obj_set_grid_cell(arc3, LV_GRID_ALIGN_STRETCH, 2, 1, LV_GRID_ALIGN_STRETCH, 1, 1);
 
-    lv_obj_t *button_start = button_container(screen_container, "Iniciar");
-    lv_obj_add_event_cb(button_start, start_event_cb, LV_EVENT_CLICKED, NULL);
-    lv_obj_t *button_pause = button_container(screen_container, "Pausar");
-    lv_obj_t *button_cooler = button_container(screen_container, "Resfriador");
+    // st_btn = st_button(screen_container);
+    // cooler_btn = cooler_button(screen_container);
 
-    lv_obj_set_grid_cell(button_start, LV_GRID_ALIGN_STRETCH, 0, 1, LV_GRID_ALIGN_STRETCH, 2, 1);
-    lv_obj_set_grid_cell(button_pause, LV_GRID_ALIGN_STRETCH, 1, 1, LV_GRID_ALIGN_STRETCH, 2, 1);
-    lv_obj_set_grid_cell(button_cooler, LV_GRID_ALIGN_STRETCH, 2, 1, LV_GRID_ALIGN_STRETCH, 2, 1);
+    // lv_obj_set_grid_cell(st_btn, LV_GRID_ALIGN_STRETCH, 0, 1, LV_GRID_ALIGN_STRETCH, 2, 1);
+    // lv_obj_set_grid_cell(cooler_btn, LV_GRID_ALIGN_STRETCH, 2, 1, LV_GRID_ALIGN_STRETCH, 2, 1);
 
-    lv_obj_t *chart_container = lv_obj_create(tab2);
-    lv_obj_set_size(chart_container, 480, 275);
-    lv_obj_set_style_bg_color(chart_container, lv_color_make(248, 248, 248), 0);
-    lv_obj_set_style_border_width(chart_container, 0, 0);
+    // lv_obj_t *chart_container = lv_obj_create(tab2);
+    // lv_obj_set_size(chart_container, 480, 275);
+    // lv_obj_set_style_bg_color(chart_container, lv_color_make(248, 248, 248), 0);
+    // lv_obj_set_style_border_width(chart_container, 0, 0);
 
-    lv_obj_t *chart = lv_chart_create(chart_container);
-    lv_obj_set_size(chart, 400, 220);
-    lv_obj_center(chart);
-    lv_obj_set_style_bg_color(chart, lv_color_make(248, 248, 248), 0);
-    lv_obj_set_style_border_width(chart, 0, 0);
-    lv_chart_set_type(chart, LV_CHART_TYPE_LINE);
-    lv_chart_set_range(chart, LV_CHART_AXIS_PRIMARY_Y, 0, 300);
-    lv_chart_set_range(chart, LV_CHART_AXIS_SECONDARY_Y, -100, 100);
-    lv_chart_set_point_count(chart, 12);
-    lv_obj_add_event_cb(chart, draw_event_cb, LV_EVENT_DRAW_PART_BEGIN, NULL);
+    // lv_obj_t *chart = lv_chart_create(chart_container);
+    // lv_obj_set_size(chart, 400, 220);
+    // lv_obj_center(chart);
+    // lv_obj_set_style_bg_color(chart, lv_color_make(248, 248, 248), 0);
+    // lv_obj_set_style_border_width(chart, 0, 0);
+    // lv_chart_set_type(chart, LV_CHART_TYPE_LINE);
+    // lv_chart_set_range(chart, LV_CHART_AXIS_PRIMARY_Y, 0, 300);
+    // lv_chart_set_range(chart, LV_CHART_AXIS_SECONDARY_Y, -100, 100);
+    // lv_chart_set_point_count(chart, 12);
+    // lv_obj_add_event_cb(chart, draw_event_cb, LV_EVENT_DRAW_PART_BEGIN, NULL);
 
-    lv_chart_set_axis_tick(chart, LV_CHART_AXIS_PRIMARY_X, 10, 5, 12, 2, true, 40);
-    lv_chart_set_axis_tick(chart, LV_CHART_AXIS_PRIMARY_Y, 10, 5, 6, 5, true, 50);
-    lv_chart_set_axis_tick(chart, LV_CHART_AXIS_SECONDARY_Y, 10, 5, 6, 2, true, 50);
+    // lv_chart_set_axis_tick(chart, LV_CHART_AXIS_PRIMARY_X, 10, 5, 12, 2, true, 40);
+    // lv_chart_set_axis_tick(chart, LV_CHART_AXIS_PRIMARY_Y, 10, 5, 6, 5, true, 50);
+    // lv_chart_set_axis_tick(chart, LV_CHART_AXIS_SECONDARY_Y, 10, 5, 6, 2, true, 50);
 
-    // lv_chart_set_zoom_x(chart, 800);
+    // // lv_chart_set_zoom_x(chart, 800);
 
-    lv_chart_series_t *ser1 = lv_chart_add_series(chart, lv_palette_main(LV_PALETTE_RED), LV_CHART_AXIS_PRIMARY_Y);
-    lv_chart_series_t *ser2 = lv_chart_add_series(chart, lv_palette_main(LV_PALETTE_GREEN), LV_CHART_AXIS_SECONDARY_Y);
+    // lv_chart_series_t *ser1 = lv_chart_add_series(chart, lv_palette_main(LV_PALETTE_RED), LV_CHART_AXIS_PRIMARY_Y);
+    // lv_chart_series_t *ser2 = lv_chart_add_series(chart, lv_palette_main(LV_PALETTE_GREEN), LV_CHART_AXIS_SECONDARY_Y);
 
-    lv_chart_set_next_value(chart, ser1, 180);
-    lv_chart_set_next_value(chart, ser1, 160);
-    lv_chart_set_next_value(chart, ser1, 140);
-    lv_chart_set_next_value(chart, ser1, 120);
-    lv_chart_set_next_value(chart, ser1, 100);
-    lv_chart_set_next_value(chart, ser1, 100);
-    lv_chart_set_next_value(chart, ser1, 110);
-    lv_chart_set_next_value(chart, ser1, 115);
-    lv_chart_set_next_value(chart, ser1, 140);
-    lv_chart_set_next_value(chart, ser1, 170);
-    lv_chart_set_next_value(chart, ser1, 210);
-    lv_chart_set_next_value(chart, ser1, 250);
+    // lv_chart_set_next_value(chart, ser1, 180);
+    // lv_chart_set_next_value(chart, ser1, 160);
+    // lv_chart_set_next_value(chart, ser1, 140);
+    // lv_chart_set_next_value(chart, ser1, 120);
+    // lv_chart_set_next_value(chart, ser1, 100);
+    // lv_chart_set_next_value(chart, ser1, 100);
+    // lv_chart_set_next_value(chart, ser1, 110);
+    // lv_chart_set_next_value(chart, ser1, 115);
+    // lv_chart_set_next_value(chart, ser1, 140);
+    // lv_chart_set_next_value(chart, ser1, 170);
+    // lv_chart_set_next_value(chart, ser1, 210);
+    // lv_chart_set_next_value(chart, ser1, 250);
 
-    ser2->y_points[0] = 0;
-    ser2->y_points[1] = -20;
-    ser2->y_points[2] = -20;
-    ser2->y_points[3] = -20;
-    ser2->y_points[4] = -20;
-    ser2->y_points[5] = 0;
-    ser2->y_points[6] = 10;
-    ser2->y_points[7] = 15;
-    ser2->y_points[8] = 25;
-    ser2->y_points[9] = 30;
-    ser2->y_points[10] = 40;
-    ser2->y_points[11] = 40;
+    // ser2->y_points[0] = 0;
+    // ser2->y_points[1] = -20;
+    // ser2->y_points[2] = -20;
+    // ser2->y_points[3] = -20;
+    // ser2->y_points[4] = -20;
+    // ser2->y_points[5] = 0;
+    // ser2->y_points[6] = 10;
+    // ser2->y_points[7] = 15;
+    // ser2->y_points[8] = 25;
+    // ser2->y_points[9] = 30;
+    // ser2->y_points[10] = 40;
+    // ser2->y_points[11] = 40;
 
-    lv_chart_refresh(chart);
+    // lv_chart_refresh(chart);
 }
 
 void lcd_gui_init() {
     xGuiSemaphore = xSemaphoreCreateMutex();
     lv_init();
     lvgl_driver_init();
+    size_t size = heap_caps_get_free_size(MALLOC_CAP_DMA);
+    ESP_LOGE(TAG, "Free: %d", size);
+    ESP_LOGE(TAG, "Wants: %d", DISP_BUF_SIZE / 10 * sizeof(lv_color_t));
 
-    lv_color_t *buf1 = heap_caps_malloc(DISP_BUF_SIZE * sizeof(lv_color_t), MALLOC_CAP_DMA);
+    lv_color_t *buf1 = heap_caps_malloc(DISP_BUF_SIZE / 10 * sizeof(lv_color_t), MALLOC_CAP_DMA);
 
     int32_t size_in_px = DISP_BUF_SIZE;
+
+    ESP_LOGE(TAG, "Free: %d", size);
+
 
     lv_disp_draw_buf_init(&disp_buf, buf1, NULL, size_in_px);
 
@@ -293,28 +352,25 @@ void lcd_gui_init() {
 
 void lcd_update_task(void *pvParameters) {
     BaseType_t xStatus;
-    torrador_state_t *state;
+    output_event_t output_event;
 
     for (;;) {
-        xStatus = xQueuePeek(state_event_queue, &state, 0);
-        
-        int64_t timer_in_seconds = state->timer_value / 1000000;
-        int seconds = timer_in_seconds % 60;
-        int minutes = (timer_in_seconds / 60) % 60;
+        xStatus = xQueuePeek(output_notify_queue, &output_event, 0);
 
-        lv_label_set_text_fmt(timer, "%d:%d", minutes, seconds);
+        ESP_LOGI(TAG, "RECEIVED OUTPUT IN LCD");
 
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }
 
 void lcd_gui_task(void *pvParameters) {
-    torrador_controller_params_t *params = (torrador_controller_params_t *)pvParameters;
-    state_event_queue = params->state_event_queue;
-    control_event_queue = params->control_event_queue;  // Queue com os eventos que chegaram da IHM/WEB
+    controller_params_t params = (controller_params_t)pvParameters;
+    input_control_queue = params->input_control_queue;
+    output_notify_queue = params->output_notify_queue;  // Queue com os eventos que chegaram do controlador
 
     lcd_gui_init();
-    xTaskCreatePinnedToCore(lcd_update_task, "lcd_update_task", 4096, NULL, 1, NULL, 1);
+    ESP_LOGE(TAG, "Free on RTOS: %d", xPortGetFreeHeapSize());
+    xTaskCreatePinnedToCore(lcd_update_task, "lcd_update_task", 2000, NULL, 1, NULL, 1);
 
     for (;;) {
         if (pdTRUE == xSemaphoreTake(xGuiSemaphore, portMAX_DELAY)) {
