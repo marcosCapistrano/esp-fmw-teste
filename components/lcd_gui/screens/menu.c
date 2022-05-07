@@ -3,47 +3,78 @@
 #include "lvgl.h"
 #include <lvgl_esp32_drivers/lvgl_helpers.h>
 
-static void btn_manual_create(lv_obj_t *parent);
+#include "components.h"
+
+static btn_menu_small_t btn_menu_small_create(lv_obj_t *parent, int x, int y, const char* subtitle, int subtitle_x, int subtitle_y);
+static btn_menu_big_t btn_menu_big_create(lv_obj_t *parent);
 
 void screen_menu_init(lv_obj_t *main_screen) {
-	btn_manual_create(main_screen);
+	btn_menu_small_t btn_manual = btn_menu_small_create(main_screen, 40, 45, "MANUAL", 44, 45);
+	btn_menu_small_t btn_auto = btn_menu_small_create(main_screen, 260, 45, "AUTOMATICO", 21, 45);
+	btn_menu_big_t btn_history = btn_menu_big_create(main_screen);
 }
 
-void btn_manual_create(lv_obj_t *parent) {
-    static lv_obj_t *btn;
-		btn = lv_btn_create(parent);
+btn_menu_small_t btn_menu_small_create(lv_obj_t *parent, int x, int y, const char* subtitle, int subtitle_x, int subtitle_y) {
+    lv_obj_t *btn = container_create(parent);
     lv_obj_set_size(btn, 180, 100);
-    lv_obj_set_pos(btn, 40, 45);
+    lv_obj_set_pos(btn, x, y);
 
-    static lv_obj_t *title_label;
-		title_label = lv_label_create(btn);
+    lv_obj_t *title_label = lv_label_create(btn);
 		lv_label_set_text(title_label, "MODO");
-		lv_obj_set_pos(title_label, 31, 69);
+		lv_obj_set_pos(title_label, 69, 31);
 
-		static lv_obj_t *subtitle_label;
-		subtitle_label = lv_label_create(btn);
-		lv_label_set_text(title_label, "MANUAL");
-		lv_obj_set_pos(title_label, 45, 44);
+		lv_obj_t *subtitle_label = lv_label_create(btn);
+		lv_label_set_text(subtitle_label, subtitle);
+		lv_obj_set_pos(subtitle_label, subtitle_x, subtitle_y);
 
-		// static lv_style_t title_style;
-		// lv_style_init(&title_style);
-		// lv_style_set_text_font(&title_style, &lv_font_montserrat_12);
-		// lv_obj_add_style(title_label, &title_style, 0);
+		lv_style_t *title_style = (lv_style_t *)malloc(sizeof(lv_style_t));
+		lv_style_init(title_style);
+		lv_style_set_text_font(title_style, &lv_font_montserrat_12);
+		lv_obj_add_style(title_label, title_style, 0);
 
-		// static lv_style_t subtitle_style;
-		// lv_style_init(&subtitle_style);
-		// lv_style_set_text_font(&subtitle_style, &lv_font_montserrat_20);
-		// lv_obj_add_style(subtitle_label, &subtitle_style, 0);
+		lv_style_t *subtitle_style = (lv_style_t *)malloc(sizeof(lv_style_t));
+		lv_style_init(subtitle_style);
+		lv_style_set_text_font(subtitle_style, &lv_font_montserrat_20);
+		lv_obj_add_style(subtitle_label, subtitle_style, 0);
 
-		// btn_manual_t btn_manual = (btn_manual_t)malloc(sizeof(s_btn_manual_t));
-		// btn_manual->title_style = title_style;
-		// btn_manual->subtitle_style = subtitle_style;
+		btn_menu_small_t btn_menu_small = (btn_menu_small_t)malloc(sizeof(s_btn_menu_small_t));
+		// btn_menu_small->btn = btn;
+		btn_menu_small->title_style = title_style;
+		btn_menu_small->subtitle_style = subtitle_style;
 
-		// return btn_manual;
+		return btn_menu_small;
 }
 
-void free_btn_manual(btn_manual_t btn_manual) {
-	free(btn_manual->title_style);
-	free(btn_manual->subtitle_style);
-	free(btn_manual);
+void free_btn_menu_small(btn_menu_small_t btn_menu_small) {
+	free(btn_menu_small->btn);
+	free(btn_menu_small->title_style);
+	free(btn_menu_small->subtitle_style);
+	free(btn_menu_small);
+}
+
+btn_menu_big_t btn_menu_big_create(lv_obj_t *parent) {
+    lv_obj_t *btn = container_create(parent);
+    lv_obj_set_size(btn, 400, 100);
+    lv_obj_set_pos(btn, 39, 175);
+
+    lv_obj_t *title_label = lv_label_create(btn);
+		lv_label_set_text(title_label, "HISTORICO DE TORRA");
+		lv_obj_set_pos(title_label, 87, 38);
+
+		lv_style_t *title_style = (lv_style_t *)malloc(sizeof(lv_style_t));
+		lv_style_init(title_style);
+		lv_style_set_text_font(title_style, &lv_font_montserrat_20);
+		lv_obj_add_style(title_label, title_style, 0);
+
+		btn_menu_big_t btn_menu_big = (btn_menu_big_t)malloc(sizeof(s_btn_menu_big_t));
+		btn_menu_big->btn = btn;
+		btn_menu_big->title_style = title_style;
+
+		return btn_menu_big;
+}
+
+void free_btn_menu_big(btn_menu_big_t btn_menu_big) {
+	free(btn_menu_big->btn);
+	free(btn_menu_big->title_style);
+	free(btn_menu_big);
 }

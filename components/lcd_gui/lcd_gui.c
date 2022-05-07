@@ -4,15 +4,17 @@
 #include <lvgl_esp32_drivers/lvgl_helpers.h>
 #include <stdio.h>
 
+#include "common_params.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 #include "freertos/task.h"
+#include "manual_mode.h"
+#include "menu.h"
 #include "time.h"
 
-#include "common_params.h"
-#include "menu.h"
-
+#define AUSYX_HOR_RES 480
+#define AUSYX_VER_RES 320
 #define LV_TICK_PERIOD_MS 1
 
 static const char *TAG = "LCD_GUI";
@@ -20,7 +22,8 @@ static const char *TAG = "LCD_GUI";
 static lv_disp_draw_buf_t disp_buf;
 static lv_disp_drv_t disp_drv;
 static lv_indev_drv_t indev_drv;
-static lv_indev_t *indev;
+static lv_indev_t *indev; 
+static esp_timer_handle_t periodic_timer;
 
 static void lv_tick_task(void *arg);
 
@@ -32,12 +35,13 @@ void lcd_gui_init() {
     lv_color_t *buf1 = heap_caps_malloc(size_in_px * sizeof(lv_color_t), MALLOC_CAP_DMA);
 
     lv_disp_draw_buf_init(&disp_buf, buf1, NULL, size_in_px);
+
     lv_disp_drv_init(&disp_drv);
 
     disp_drv.draw_buf = &disp_buf;
     disp_drv.flush_cb = disp_driver_flush;
-    disp_drv.hor_res = LV_HOR_RES;
-    disp_drv.ver_res = LV_VER_RES;
+    disp_drv.hor_res = AUSYX_HOR_RES;
+    disp_drv.ver_res = AUSYX_VER_RES;
     lv_disp_drv_register(&disp_drv);
 
     lv_indev_drv_init(&indev_drv);
@@ -51,7 +55,6 @@ void lcd_gui_init() {
         .name = "lv_tick_task",
     };
 
-    static esp_timer_handle_t periodic_timer;
     ESP_ERROR_CHECK(esp_timer_create(&periodic_timer_args, &periodic_timer));
     ESP_ERROR_CHECK(esp_timer_start_periodic(periodic_timer, pdMS_TO_TICKS(1)));
 }
@@ -63,11 +66,7 @@ void lcd_gui_task(void *pvParameters) {
     SemaphoreHandle_t xGuiSemaphore = xSemaphoreCreateMutex();
 
     lcd_gui_init();
-    lv_obj_t *main_screen = lv_obj_create(lv_scr_act());
-    static lv_obj_t *btn;
-		btn = lv_btn_create(main_screen);
-    lv_obj_set_size(btn, 180, 100);
-    lv_obj_set_pos(btn, 40, 45);
+    screen_manual_mode_create(lv_scr_act());
 
     for (;;) {
         if (pdTRUE == xSemaphoreTake(xGuiSemaphore, portMAX_DELAY)) {
@@ -77,8 +76,6 @@ void lcd_gui_task(void *pvParameters) {
         vTaskDelay(pdMS_TO_TICKS(1));
     }
 }
-
-
 
 static void lv_tick_task(void *arg) {
     (void)arg;
