@@ -58,36 +58,36 @@ void controller_task(void *pvParameters) {
     controller_t controller = controller_init();
 
     for (;;) {
-        xStatus = xQueueReceive(input_control_queue, &input_control_event, pdMS_TO_TICKS(250));
+        // xStatus = xQueueReceive(input_control_queue, &input_control_event, pdMS_TO_TICKS(250));
 
-        if (xStatus == pdPASS) {
-            if (input_control_event->event == STAGE) {
-            ESP_LOGI(TAG, "Recebido evento de estágio!");
-                switch (input_control_event->stage) {
-                    case OFF:
+        // if (xStatus == pdPASS) {
+        //     if (input_control_event->event == STAGE) {
+        //     ESP_LOGI(TAG, "Recebido evento de estágio!");
+        //         switch (input_control_event->stage) {
+        //             case OFF:
 
-                        break;
+        //                 break;
 
-                    case PRE_HEATING:
+        //             case PRE_HEATING:
 
-                        break;
+        //                 break;
 
-                    case START:
+        //             case START:
 
-                        break;
+        //                 break;
 
-                    case END:
+        //             case END:
 
-                        break;
+        //                 break;
 
-                    case COOLER:
+        //             case COOLER:
 
-                        break;
+        //                 break;
                     
-                    default:
+        //             default:
 
-                    break;
-                }
+        //             break;
+        //         }
                 // case POTENCIA:
                 //     pwm_set_duty(controller->potencia, control_event.value);
                 //     break;
@@ -118,9 +118,10 @@ void controller_task(void *pvParameters) {
                 // default:
                 //     ESP_LOGI(TAG, "Evento de controle desconhecido");
                 //     break;
-            } else {
-                ESP_LOGI("OI", "OI!!");
-            }
-        }
+            // } else {
+            //     ESP_LOGI("OI", "OI!!");
+            // }
+        // }
+        vTaskDelay(1000);
     }
 }

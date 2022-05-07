@@ -60,12 +60,13 @@ struct output_event {
     _Bool definitive;
 };
 
-typedef struct controller_params *controller_params_t;
-
-struct controller_params {
+typedef struct controller_params_t {
     QueueHandle_t input_control_queue;
     QueueHandle_t output_notify_queue;
-};
+} s_controller_params_t;
+
+typedef s_controller_params_t *controller_params_t;
+
 
 controller_params_t controller_params_init(QueueHandle_t input_control_queue, QueueHandle_t output_notify_queue);
 
