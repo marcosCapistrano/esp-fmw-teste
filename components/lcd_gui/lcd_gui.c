@@ -10,8 +10,8 @@
 #include "freertos/semphr.h"
 #include "freertos/task.h"
 #include "manual_mode.h"
-#include "menu.h"
 #include "time.h"
+#include "screen.h"
 
 #define AUSYX_HOR_RES 480
 #define AUSYX_VER_RES 320
@@ -22,7 +22,7 @@ static const char *TAG = "LCD_GUI";
 static lv_disp_draw_buf_t disp_buf;
 static lv_disp_drv_t disp_drv;
 static lv_indev_drv_t indev_drv;
-static lv_indev_t *indev; 
+static lv_indev_t *indev;
 static esp_timer_handle_t periodic_timer;
 
 static void lv_tick_task(void *arg);
@@ -56,24 +56,24 @@ void lcd_gui_init() {
     };
 
     ESP_ERROR_CHECK(esp_timer_create(&periodic_timer_args, &periodic_timer));
-    ESP_ERROR_CHECK(esp_timer_start_periodic(periodic_timer, pdMS_TO_TICKS(1)));
+    ESP_ERROR_CHECK(esp_timer_start_periodic(periodic_timer, pdMS_TO_TICKS(LV_TICK_PERIOD_MS)));
 }
 
 void lcd_gui_task(void *pvParameters) {
     controller_params_t params = (controller_params_t)pvParameters;
     QueueHandle_t input_control_queue = params->input_control_queue;
     QueueHandle_t output_notify_queue = params->output_notify_queue;  // Queue com os eventos que chegaram do controlador
-    SemaphoreHandle_t xGuiSemaphore = xSemaphoreCreateMutex();
 
     lcd_gui_init();
-    screen_manual_mode_create(lv_scr_act());
+    screen_manager_t screen_manager = screen_manager_init(lv_scr_act());
+    SemaphoreHandle_t xGuiSemaphore = xSemaphoreCreateMutex();
 
     for (;;) {
         if (pdTRUE == xSemaphoreTake(xGuiSemaphore, portMAX_DELAY)) {
             lv_timer_handler();
             xSemaphoreGive(xGuiSemaphore);
         }
-        vTaskDelay(pdMS_TO_TICKS(1));
+        vTaskDelay(pdMS_TO_TICKS(5));
     }
 }
 

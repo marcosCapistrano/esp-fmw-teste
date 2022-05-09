@@ -30,6 +30,7 @@
     "tuple": "c",
     "type_traits": "c",
     "utility": "c",
-    "manual_mode.h": "c"
+    "manual_mode.h": "c",
+    "semphr.h": "c"
   }
 }

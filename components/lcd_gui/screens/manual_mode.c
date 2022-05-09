@@ -4,10 +4,23 @@
 #include <lvgl_esp32_drivers/lvgl_helpers.h>
 
 #include "components.h"
+#include "screen.h"
 
-void screen_manual_mode_create(lv_obj_t* main_screen) {
-	lv_obj_t *header = header_create(main_screen, "MODO MANUAL");
+void screen_manual_mode_init(lv_obj_t* main_screen, screen_manager_t screen_manager) {
+	lv_obj_t *header = header_create(main_screen, "MODO MANUAL", screen_manager);
+	lv_obj_t *status = status_create(main_screen, "DESLIGADO");
+  lv_obj_t *chart = chart_create(main_screen);
+	lv_obj_t *btn_extra = btn_container_create(header);
+
+	lv_obj_set_pos(btn_extra, 383, 10);
+	lv_obj_set_size(btn_extra, 70, 30);
+	lv_obj_t *label_btn_extra = lv_label_create(btn_extra);
+	lv_obj_set_pos(label_btn_extra, 3, 9);
+	lv_label_set_text(label_btn_extra, "CONTROLES");
+	lv_obj_set_style_text_font(label_btn_extra, &lv_font_montserrat_10, 0);
 }
+
+
 
 // static btn_menu_small_t btn_menu_small_create(lv_obj_t *parent, int x, int y, const char* subtitle, int subtitle_x, int subtitle_y) {
 //     lv_obj_t *btn = container_create(parent);
