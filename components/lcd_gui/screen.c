@@ -1,6 +1,7 @@
 #include "screen.h"
-#include "esp_log.h"
+
 #include "common_params.h"
+#include "esp_log.h"
 #include "lvgl.h"
 #include "manual_mode.h"
 #include "menu.h"
@@ -9,11 +10,14 @@ static nav_t nav_init(screen_t screen);
 static void nav_push(nav_t *nav, screen_t screen);
 static void nav_pop(nav_t *nav);
 
-screen_manager_t screen_manager_init(lv_obj_t *main_screen) {
+screen_manager_t screen_manager_init(lv_obj_t *main_screen, QueueHandle_t input_control_queue, QueueHandle_t output_notify_queue, controller_t controller) {
     screen_manager_t screen_manager = malloc(sizeof(s_screen_manager_t));
     screen_manager->main_screen = main_screen;
     screen_manager->current_screen = MENU;
     screen_manager->current_nav = nav_init(MENU);
+    screen_manager->input_control_queue = input_control_queue;
+    screen_manager->output_notify_queue = output_notify_queue;
+    screen_manager->controller = controller;
 
     screen_manager->menu_obj = screen_menu_init(main_screen, screen_manager);
 
@@ -44,7 +48,7 @@ void screen_manager_set_screen(screen_manager_t screen_manager, screen_t screen)
     clear_screen(screen_manager);
     screen_manager->current_screen = screen;
 
-    nav_t *head = &(screen_manager->current_nav); 
+    nav_t *head = &(screen_manager->current_nav);
     nav_push(head, screen);
 
     switch (screen) {
@@ -70,8 +74,8 @@ nav_t nav_init(screen_t screen) {
 }
 
 void nav_push(nav_t *nav, screen_t screen) {
-    nav_t new_head = (nav_t) malloc(sizeof(s_nav_t));
-    
+    nav_t new_head = (nav_t)malloc(sizeof(s_nav_t));
+
     new_head->screen = screen;
     new_head->next = *nav;
 

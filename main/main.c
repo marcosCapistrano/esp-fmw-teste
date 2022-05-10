@@ -42,15 +42,29 @@ void app_main(void) {
 
     input_control_queue = xQueueCreate(10, sizeof(input_event_t));
     output_notify_queue = xQueueCreate(1, sizeof(output_event_t));
+    controller_t controller = controller_init();
 
-    controller_params = controller_params_init(input_control_queue, output_notify_queue);
+    controller_params = controller_params_init(input_control_queue, output_notify_queue, controller);
 
     // wifi_init();
     // web_server_init();
 
     // xTaskCreatePinnedToCore(wifi_task, "WIFI_TASK", 8192, NULL, 0, NULL, 0);
-    // xTaskCreatePinnedToCore(controller_task, "TORRADOR_CONTROLLER_TASK", 2048, controller_params, 5, NULL, 1);
     // xTaskCreatePinnedToCore(web_server_task, "WEB_SERVER_TASK", 8192, torrador_controller_params, 2, NULL, 1);
-    xTaskCreatePinnedToCore(lcd_gui_task, "LCD_GUI_TASK", 24000, controller_params, 5, NULL, 1);
+
+
+    lcd_gui_draw_params_t lcd_gui_draw_params = malloc(sizeof(s_lcd_gui_draw_params_t));
+    lcd_gui_draw_params->input_control_queue = input_control_queue;
+    lcd_gui_draw_params->output_notify_queue = output_notify_queue;
+
+    lcd_gui_update_params_t lcd_gui_update_params = malloc(sizeof(s_lcd_gui_update_params_t));
+    lcd_gui_update_params->input_control_queue = input_control_queue;
+    lcd_gui_update_params->output_notify_queue = output_notify_queue;
+
+    lcd_gui_init();
+
+    xTaskCreatePinnedToCore(lcd_gui_draw_task, "LCD_GUI_DRAW_TASK", 12000, lcd_gui_draw_params, 1, NULL, 1);
+    xTaskCreatePinnedToCore(lcd_gui_update_task, "LCD_GUI_UPDATE_TASK", 24000, lcd_gui_update_params, 5, NULL, 1);
+    xTaskCreatePinnedToCore(controller_task, "TORRADOR_CONTROLLER_TASK", 2048, controller_params, 5, NULL, 1);
     return;
 }

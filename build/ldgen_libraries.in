@@ -70,6 +70,7 @@ $<TARGET_FILE:__idf_spiffs>
 $<TARGET_FILE:__idf_ulp>
 $<TARGET_FILE:__idf_wifi_provisioning>
 $<TARGET_FILE:__idf_main>
+$<TARGET_FILE:__idf_controller>
 $<TARGET_FILE:__idf_common>
 $<TARGET_FILE:__idf_esp32-idf-sqlite3>
 $<TARGET_FILE:__idf_database_controller>
@@ -77,6 +78,5 @@ $<TARGET_FILE:__idf_i2c_manager>
 $<TARGET_FILE:__idf_lvgl>
 $<TARGET_FILE:__idf_lcd_gui>
 $<TARGET_FILE:__idf_lvgl_esp32_drivers>
-$<TARGET_FILE:__idf_torrador_controller>
 $<TARGET_FILE:__idf_web_server>
 $<TARGET_FILE:__idf_wifi_connect>

@@ -676,6 +676,13 @@
 /home/marcoscapistrano/Documents/Ausyx/fmw-torrador/build/esp-idf/main/CMakeFiles/rebuild_cache.dir
 /home/marcoscapistrano/Documents/Ausyx/fmw-torrador/build/esp-idf/main/CMakeFiles/edit_cache.dir
 /home/marcoscapistrano/Documents/Ausyx/fmw-torrador/build/esp-idf/main/CMakeFiles/__idf_main.dir
+/home/marcoscapistrano/Documents/Ausyx/fmw-torrador/build/esp-idf/controller/CMakeFiles/install/strip.dir
+/home/marcoscapistrano/Documents/Ausyx/fmw-torrador/build/esp-idf/controller/CMakeFiles/install/local.dir
+/home/marcoscapistrano/Documents/Ausyx/fmw-torrador/build/esp-idf/controller/CMakeFiles/install.dir
+/home/marcoscapistrano/Documents/Ausyx/fmw-torrador/build/esp-idf/controller/CMakeFiles/list_install_components.dir
+/home/marcoscapistrano/Documents/Ausyx/fmw-torrador/build/esp-idf/controller/CMakeFiles/rebuild_cache.dir
+/home/marcoscapistrano/Documents/Ausyx/fmw-torrador/build/esp-idf/controller/CMakeFiles/edit_cache.dir
+/home/marcoscapistrano/Documents/Ausyx/fmw-torrador/build/esp-idf/controller/CMakeFiles/__idf_controller.dir
 /home/marcoscapistrano/Documents/Ausyx/fmw-torrador/build/esp-idf/common/CMakeFiles/install/strip.dir
 /home/marcoscapistrano/Documents/Ausyx/fmw-torrador/build/esp-idf/common/CMakeFiles/install/local.dir
 /home/marcoscapistrano/Documents/Ausyx/fmw-torrador/build/esp-idf/common/CMakeFiles/install.dir
@@ -725,13 +732,6 @@
 /home/marcoscapistrano/Documents/Ausyx/fmw-torrador/build/esp-idf/lvgl_esp32_drivers/CMakeFiles/rebuild_cache.dir
 /home/marcoscapistrano/Documents/Ausyx/fmw-torrador/build/esp-idf/lvgl_esp32_drivers/CMakeFiles/edit_cache.dir
 /home/marcoscapistrano/Documents/Ausyx/fmw-torrador/build/esp-idf/lvgl_esp32_drivers/CMakeFiles/__idf_lvgl_esp32_drivers.dir
-/home/marcoscapistrano/Documents/Ausyx/fmw-torrador/build/esp-idf/torrador_controller/CMakeFiles/install/local.dir
-/home/marcoscapistrano/Documents/Ausyx/fmw-torrador/build/esp-idf/torrador_controller/CMakeFiles/install.dir
-/home/marcoscapistrano/Documents/Ausyx/fmw-torrador/build/esp-idf/torrador_controller/CMakeFiles/list_install_components.dir
-/home/marcoscapistrano/Documents/Ausyx/fmw-torrador/build/esp-idf/torrador_controller/CMakeFiles/rebuild_cache.dir
-/home/marcoscapistrano/Documents/Ausyx/fmw-torrador/build/esp-idf/torrador_controller/CMakeFiles/edit_cache.dir
-/home/marcoscapistrano/Documents/Ausyx/fmw-torrador/build/esp-idf/torrador_controller/CMakeFiles/install/strip.dir
-/home/marcoscapistrano/Documents/Ausyx/fmw-torrador/build/esp-idf/torrador_controller/CMakeFiles/__idf_torrador_controller.dir
 /home/marcoscapistrano/Documents/Ausyx/fmw-torrador/build/esp-idf/web_server/CMakeFiles/install/strip.dir
 /home/marcoscapistrano/Documents/Ausyx/fmw-torrador/build/esp-idf/web_server/CMakeFiles/install/local.dir
 /home/marcoscapistrano/Documents/Ausyx/fmw-torrador/build/esp-idf/web_server/CMakeFiles/edit_cache.dir

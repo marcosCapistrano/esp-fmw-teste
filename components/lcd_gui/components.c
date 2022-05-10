@@ -23,6 +23,23 @@ lv_obj_t *btn_container_create(lv_obj_t *parent) {
     return container;
 }
 
+btn_stage_t btn_stage_create(lv_obj_t *parent) {
+    lv_obj_t *btn = btn_container_create(parent);
+    lv_obj_set_size(btn, 88, 30);
+    lv_obj_set_pos(btn, 26, 58);
+    lv_obj_t *label = lv_label_create(btn);
+
+    lv_label_set_text(label, "PRE-AQUECER");
+    lv_obj_set_style_text_font(label, &lv_font_montserrat_10, 0);
+    lv_obj_center(label);
+
+    btn_stage_t btn_stage = (btn_stage_t)malloc(sizeof(s_btn_stage_t));
+    btn_stage->btn = btn;
+    btn_stage->label = label;
+
+    return btn_stage;
+}
+
 lv_obj_t *header_create(lv_obj_t *parent, const char *title, screen_manager_t screen_manager) {
     lv_obj_t *header = container_create(parent);
     lv_obj_set_size(header, lv_obj_get_width(parent), 50);
@@ -73,7 +90,7 @@ lv_obj_t *status_create(lv_obj_t *parent, const char *starting_status) {
 
 lv_obj_t *chart_create(lv_obj_t *parent) {
     lv_obj_t *chart = lv_chart_create(parent);
-    lv_obj_set_pos(chart, 50, 100);
+    lv_obj_set_pos(chart, 50, 0);
     lv_obj_set_size(chart, 380, 188);
     lv_obj_set_style_bg_color(chart, lv_color_make(248, 248, 248), 0);
     lv_obj_set_style_border_width(chart, 0, 0);

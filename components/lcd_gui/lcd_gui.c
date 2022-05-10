@@ -59,13 +59,24 @@ void lcd_gui_init() {
     ESP_ERROR_CHECK(esp_timer_start_periodic(periodic_timer, pdMS_TO_TICKS(LV_TICK_PERIOD_MS)));
 }
 
-void lcd_gui_task(void *pvParameters) {
+void lcd_gui_update_task(void *pvParameters) {
+    lcd_gui_update_params_t params = (lcd_gui_update_params_t)pvParameters;
+    QueueHandle_t input_control_queue = params->input_control_queue;
+    QueueHandle_t output_notify_queue = params->output_notify_queue;  // Queue com os eventos que chegaram do controlador
+    controller_t controller = params->controller;
+
+    screen_manager_t screen_manager = screen_manager_init(lv_scr_act(), input_control_queue, output_notify_queue, controller);
+
+    for(;;) {
+        vTaskDelay(pdMS_TO_TICKS(100));
+    }
+}
+
+void lcd_gui_draw_task(void *pvParameters) {
     controller_params_t params = (controller_params_t)pvParameters;
     QueueHandle_t input_control_queue = params->input_control_queue;
     QueueHandle_t output_notify_queue = params->output_notify_queue;  // Queue com os eventos que chegaram do controlador
 
-    lcd_gui_init();
-    screen_manager_t screen_manager = screen_manager_init(lv_scr_act());
     SemaphoreHandle_t xGuiSemaphore = xSemaphoreCreateMutex();
 
     for (;;) {
