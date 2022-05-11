@@ -689,7 +689,6 @@
 /home/marcoscapistrano/Documents/Ausyx/fmw-torrador/build/esp-idf/common/CMakeFiles/list_install_components.dir
 /home/marcoscapistrano/Documents/Ausyx/fmw-torrador/build/esp-idf/common/CMakeFiles/rebuild_cache.dir
 /home/marcoscapistrano/Documents/Ausyx/fmw-torrador/build/esp-idf/common/CMakeFiles/edit_cache.dir
-/home/marcoscapistrano/Documents/Ausyx/fmw-torrador/build/esp-idf/common/CMakeFiles/__idf_common.dir
 /home/marcoscapistrano/Documents/Ausyx/fmw-torrador/build/esp-idf/esp32-idf-sqlite3/CMakeFiles/install/strip.dir
 /home/marcoscapistrano/Documents/Ausyx/fmw-torrador/build/esp-idf/esp32-idf-sqlite3/CMakeFiles/install/local.dir
 /home/marcoscapistrano/Documents/Ausyx/fmw-torrador/build/esp-idf/esp32-idf-sqlite3/CMakeFiles/install.dir

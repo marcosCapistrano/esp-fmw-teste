@@ -4,7 +4,6 @@
 #include <lvgl_esp32_drivers/lvgl_helpers.h>
 #include <stdio.h>
 
-#include "common_params.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"

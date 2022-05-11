@@ -1,3 +1,3 @@
-idf_component_register(SRCS "screens/menu.c" "screens/manual_mode.c" "lcd_gui.c" "components.c" "screen.c"
+idf_component_register(SRCS "lcd_gui.c" "screen_manager.c" "components.c"  "screens/menu.c" "screens/manual_mode.c" 
                     INCLUDE_DIRS "include"
-                    REQUIRES lvgl common controller)
+                    REQUIRES lvgl common)

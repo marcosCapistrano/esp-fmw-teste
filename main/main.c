@@ -1,34 +1,17 @@
-#include <stdbool.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
-#include "common_params.h"
-#include "controller.h"
-#include "database_controller.h"
-#include "driver/gpio.h"
-#include "esp_freertos_hooks.h"
-#include "esp_log.h"
-#include "esp_system.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
-#include "freertos/task.h"
-#include "lcd_gui.h"
-#include "lvgl/lvgl.h"
-#include "lvgl_helpers.h"
+
 #include "nvs_flash.h"
-#include "web_server.h"
-#include "wifi_connect.h"
+#include "controller.h"
+#include "lcd_gui.h"
 
 static const char* TAG = "MAIN";
 
-static QueueHandle_t stage_control_queue;
-static QueueHandle_t input_control_queue;
+static controller_t controller;
+static lcd_gui_t lcd_gui;
 
-static QueueHandle_t stage_notify_queue;
-static QueueHandle_t output_notify_queue;
-
-static controller_params_t controller_params;
+static QueueHandle_t incoming_queue_commands;
+static QueueHandle_t outgoing_queue_lcd;
 
 void app_main(void) {
     esp_err_t nvs = nvs_flash_init();
@@ -38,33 +21,14 @@ void app_main(void) {
     }
     ESP_ERROR_CHECK(nvs);
 
-    // database_controller_t *database_controller = database_controller_create();
+    incoming_queue_commands = xQueueCreate(10, sizeof(s_incoming_data_t));
+    outgoing_queue_lcd = xQueueCreate(5, sizeof(s_outgoing_data_t));
 
-    input_control_queue = xQueueCreate(10, sizeof(input_event_t));
-    output_notify_queue = xQueueCreate(1, sizeof(output_event_t));
-    controller_t controller = controller_init();
+    controller = controller_init(incoming_queue_commands, outgoing_queue_lcd);
+    lcd_gui = lcd_gui_init(controller->controller_data, incoming_queue_commands, outgoing_queue_lcd);
 
-    controller_params = controller_params_init(input_control_queue, output_notify_queue, controller);
-
-    // wifi_init();
-    // web_server_init();
-
-    // xTaskCreatePinnedToCore(wifi_task, "WIFI_TASK", 8192, NULL, 0, NULL, 0);
-    // xTaskCreatePinnedToCore(web_server_task, "WEB_SERVER_TASK", 8192, torrador_controller_params, 2, NULL, 1);
-
-
-    lcd_gui_draw_params_t lcd_gui_draw_params = malloc(sizeof(s_lcd_gui_draw_params_t));
-    lcd_gui_draw_params->input_control_queue = input_control_queue;
-    lcd_gui_draw_params->output_notify_queue = output_notify_queue;
-
-    lcd_gui_update_params_t lcd_gui_update_params = malloc(sizeof(s_lcd_gui_update_params_t));
-    lcd_gui_update_params->input_control_queue = input_control_queue;
-    lcd_gui_update_params->output_notify_queue = output_notify_queue;
-
-    lcd_gui_init();
-
-    xTaskCreatePinnedToCore(lcd_gui_draw_task, "LCD_GUI_DRAW_TASK", 12000, lcd_gui_draw_params, 1, NULL, 1);
-    xTaskCreatePinnedToCore(lcd_gui_update_task, "LCD_GUI_UPDATE_TASK", 24000, lcd_gui_update_params, 5, NULL, 1);
-    xTaskCreatePinnedToCore(controller_task, "TORRADOR_CONTROLLER_TASK", 2048, controller_params, 5, NULL, 1);
+    // xTaskCreatePinnedToCore(lcd_gui_draw_task, "LCD_GUI_DRAW_TASK", 12000, NULL, 1, NULL, 1);
+    // xTaskCreatePinnedToCore(lcd_gui_update_task, "LCD_GUI_UPDATE_TASK", 12000, NULL, 5, NULL, 1);
+    // xTaskCreatePinnedToCore(controller_task, "TORRADOR_CONTROLLER_TASK", 2048, controller_params, 5, NULL, 1);
     return;
 }

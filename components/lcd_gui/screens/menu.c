@@ -4,7 +4,7 @@
 
 #include "components.h"
 #include "lvgl.h"
-#include "screen.h"
+#include "screen_manager.h"
 
 static btn_menu_small_t btn_menu_small_create(lv_obj_t *parent, int x, int y, const char *subtitle, int subtitle_x, int subtitle_y);
 static btn_menu_big_t btn_menu_big_create(lv_obj_t *parent);

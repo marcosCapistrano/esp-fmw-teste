@@ -18,26 +18,30 @@
 #include "freertos/semphr.h"
 #include "esp_timer.h"
 
-#include "common_params.h"
-#include "common.h"
+#include "common_controller.h"
 #include "pwm.h"
 
 
-struct controller {
+typedef struct s_controller_t {
+    QueueHandle_t outgoing_queue_lcd;
+    QueueHandle_t outgoing_queue_server;
+    QueueHandle_t incoming_queue_commands;
+    
     esp_timer_handle_t* timer_handle;
 
     pwm_t potencia;
     pwm_t cilindro;
     pwm_t turbina;
 
-    controller_mode_t mode;
-    stage_t stage;
+    controller_data_t controller_data;
+
     int64_t start_time;
     int64_t current_time;
-};
-typedef struct controller* controller_t;
+} s_controller_t;
 
-controller_t controller_init();
+typedef struct s_controller_t *controller_t;
+
+controller_t controller_init(QueueHandle_t incoming_queue_commands, QueueHandle_t outgoing_queue_lcd);
 void controller_task(void *pvParameters); 
 
 #endif

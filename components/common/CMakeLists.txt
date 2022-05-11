@@ -1,3 +1,3 @@
-idf_component_register(SRCS "common_params.c"
+idf_component_register(SRCS
                     INCLUDE_DIRS "include"
                     REQUIRES controller)

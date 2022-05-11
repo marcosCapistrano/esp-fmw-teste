@@ -2,7 +2,6 @@
 #define SCREEN_MENU_H
 
 #include "lvgl.h"
-// #include "screen.h"
 
 typedef struct s_btn_menu_small_t {
 	lv_obj_t *btn;
@@ -26,6 +25,7 @@ typedef struct s_menu_obj_t {
 
 typedef struct s_menu_obj_t *menu_obj_t;
 
+/*Forward REFs*/
 typedef struct s_screen_manager_t *screen_manager_t;
 
 menu_obj_t screen_menu_init(lv_obj_t* main_screen, screen_manager_t screen_manager);

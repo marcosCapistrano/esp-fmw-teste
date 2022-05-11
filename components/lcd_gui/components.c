@@ -1,7 +1,6 @@
 #include "components.h"
 
 #include "lvgl.h"
-#include "screen.h"
 
 static void btn_back_event_handler(lv_event_t *e);
 
@@ -74,18 +73,23 @@ void btn_back_event_handler(lv_event_t *e) {
     }
 }
 
-lv_obj_t *status_create(lv_obj_t *parent, const char *starting_status) {
-    lv_obj_t *status_title = lv_label_create(parent);
+status_obj_t status_create(lv_obj_t *content, const char *starting_status) {
+    status_obj_t status_obj = malloc(sizeof(s_status_obj_t));
+
+    lv_obj_t *status_title = lv_label_create(content);
     lv_label_set_text(status_title, "STATUS");
     lv_obj_set_pos(status_title, 221, 58);
     lv_obj_set_style_text_font(status_title, &lv_font_montserrat_10, 0);
 
-    lv_obj_t *status = lv_label_create(parent);
+    lv_obj_t *status = lv_label_create(content);
     lv_label_set_text(status, starting_status);
     lv_obj_set_pos(status, 191, 68);
     lv_obj_set_style_text_font(status, &lv_font_montserrat_16, 0);
 
-    return status;
+    status_obj->label = status;
+    status_obj->value = starting_status;
+
+    return status_obj;
 }
 
 lv_obj_t *chart_create(lv_obj_t *parent) {

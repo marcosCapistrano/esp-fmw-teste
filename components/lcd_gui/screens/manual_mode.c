@@ -4,22 +4,94 @@
 
 #include "components.h"
 #include "lvgl.h"
-#include "screen.h"
+#include "screen_manager.h"
 
 lv_obj_t *sensor_create(lv_obj_t *parent, int x, int y);
-lv_obj_t *sensor_ar_create(lv_obj_t *parent, int x, int y, int label_temp_x, int label_temp_y, int label_ar_x, int label_ar_y);
-lv_obj_t *sensor_grao_create(lv_obj_t *parent, int x, int y, int label_temp_x, int label_temp_y, int label_grao_x, int label_grao_y);
-lv_obj_t *sensor_grad_create(lv_obj_t *parent, int x, int y, int label_grao_x, int label_grao_y);
-lv_obj_t *arc_container_create(lv_obj_t *parent, char *label, int x, int y);
+sensor_obj_t sensor_ar_create(lv_obj_t *parent, int x, int y, int label_temp_x, int label_temp_y, int label_ar_x, int label_ar_y);
+sensor_obj_t sensor_grao_create(lv_obj_t *parent, int x, int y, int label_temp_x, int label_temp_y, int label_grao_x, int label_grao_y);
+sensor_obj_t sensor_grad_create(lv_obj_t *parent, int x, int y, int label_grao_x, int label_grao_y);
+arc_obj_t arc_container_create(lv_obj_t *parent, char *label, int x, int y);
 btn_content_t btn_content_create(lv_obj_t *parent);
 
+content_manager_t content_manager_create(lv_obj_t *parent, lv_obj_t *header);
+void update_controls(controller_data_t controller_data, content_manager_t content_manager);
 void controls_create(lv_obj_t *parent);
 void btn_content_event_handler(lv_event_t *e);
 void btn_stage_event_handler(lv_event_t *e);
 
-void screen_manual_mode_init(lv_obj_t *main_screen, screen_manager_t screen_manager) {
+manual_mode_obj_t screen_manual_mode_init(lv_obj_t *main_screen, screen_manager_t screen_manager) {
     lv_obj_t *header = header_create(main_screen, "MODO MANUAL", screen_manager);
-    lv_obj_t *status = status_create(main_screen, "DESLIGADO");
+
+    manual_mode_obj_t manual_mode_obj = malloc(sizeof(s_manual_mode_obj_t));
+    manual_mode_obj->status_obj = status_create(main_screen, "Carregando...");
+    manual_mode_obj->content_manager = content_manager_create(main_screen, header);
+
+    return manual_mode_obj;
+}
+
+void screen_manual_mode_update(controller_data_t controller_data, manual_mode_obj_t manual_mode_obj) {
+    content_manager_t content_manager = manual_mode_obj->content_manager;
+
+    switch (content_manager->current_content) {
+        case GRAPH:
+
+            break;
+
+        case CONTROLS:
+            update_controls(controller_data, content_manager);
+            break;
+    }
+}
+
+void update_controls(controller_data_t controller_data, content_manager_t content_manager) {
+    int potencia = controller_data->read_potencia;
+    int cilindro = controller_data->read_cilindro;
+    int turbina = controller_data->read_turbina;
+
+    int temp_ar = controller_data->read_temp_ar;
+    int temp_grao = controller_data->read_temp_grao;
+    int grad = controller_data->read_grad;
+
+    sensor_obj_t sensor_ar_obj = content_manager->sensor_ar_obj;
+    sensor_obj_t sensor_grao_obj = content_manager->sensor_grao_obj;
+    sensor_obj_t sensor_grad_obj = content_manager->sensor_grad_obj;
+
+    arc_obj_t arc_potencia_obj = content_manager->arc_potencia_obj;
+    arc_obj_t arc_cilindro_obj = content_manager->arc_cilindro_obj;
+    arc_obj_t arc_turbina_obj = content_manager->arc_turbina_obj;
+
+    if (sensor_ar_obj->value != temp_ar) {
+        sensor_ar_obj->value = temp_ar;
+        lv_label_set_text_fmt(sensor_ar_obj->label, "%d", temp_ar);
+    }
+
+    if (sensor_grao_obj->value != temp_grao) {
+        sensor_grao_obj->value = temp_grao;
+        lv_label_set_text_fmt(sensor_grao_obj->label, "%d", temp_grao);
+    }
+
+    if (sensor_grad_obj->value != grad) {
+        sensor_grad_obj->value = grad;
+        lv_label_set_text_fmt(sensor_grad_obj->label, "%d", grad);
+    }
+
+    if (arc_potencia_obj->value != potencia) {
+        arc_potencia_obj->value = potencia;
+        lv_label_set_text_fmt(arc_potencia_obj->arc_label, "%d", potencia);
+    }
+
+    if (arc_cilindro_obj->value != cilindro) {
+        arc_cilindro_obj->value = cilindro;
+        lv_label_set_text_fmt(arc_cilindro_obj->arc_label, "%d", cilindro);
+    }
+
+    if (arc_turbina_obj->value != turbina) {
+        arc_turbina_obj->value = turbina;
+        lv_label_set_text_fmt(arc_turbina_obj->arc_label, "%d", turbina);
+    }
+}
+
+content_manager_t content_manager_create(lv_obj_t *main_screen, lv_obj_t *header) {
     btn_stage_t btn_stage = btn_stage_create(main_screen);
 
     lv_obj_t *content = container_create(main_screen);
@@ -33,14 +105,16 @@ void screen_manual_mode_init(lv_obj_t *main_screen, screen_manager_t screen_mana
     content_manager->content = content;
     content_manager->btn_content = btn_content;
 
-    lv_obj_add_event_cb(btn_content->btn, btn_content_event_handler, LV_EVENT_ALL, content_manager);
-    lv_obj_add_event_cb(btn_stage->btn, btn_stage_event_handler, LV_EVENT_ALL, screen_manager);
+    content_manager->sensor_ar_obj = sensor_ar_create(content, 26, 12, 28, 4, 58, 14);
+    content_manager->sensor_grad_obj = sensor_grad_create(content, 175, 12, 29, 10);
+    content_manager->sensor_grao_obj = sensor_grao_create(content, 322, 12, 27, 4, 47, 14);
+    content_manager->arc_potencia_obj = arc_container_create(content, "POTENCIA", 26, 104);
+    content_manager->arc_cilindro_obj = arc_container_create(content, "CILINDRO", 175, 104);
+    content_manager->arc_turbina_obj = arc_container_create(content, "TURBINA", 322, 104);
 
-    manual_mode_obj_t manual_mode_obj = malloc(sizeof(s_manual_mode_obj_t));
-    manual_mode_obj->content_manager = content_manager;
-    screen_manager->manual_mode_obj = manual_mode_obj;
+    content_manager->chart_obj = chart_create(content);
 
-    chart_create(content);
+    return content_manager;
 }
 
 void clear_content(lv_obj_t *content) {
@@ -65,12 +139,6 @@ void manual_mode_set_content(content_manager_t content_manager, content_t type) 
 }
 
 void controls_create(lv_obj_t *content) {
-    lv_obj_t *sensor_ar = sensor_ar_create(content, 26, 12, 28, 4, 58, 14);
-    lv_obj_t *senor_grad = sensor_grad_create(content, 175, 12, 29, 10);
-    lv_obj_t *sensor_grao = sensor_grao_create(content, 322, 12, 27, 4, 47, 14);
-    lv_obj_t *arc_potencia = arc_container_create(content, "POTENCIA", 26, 104);
-    lv_obj_t *arc_cilindro = arc_container_create(content, "CILINDRO", 175, 104);
-    lv_obj_t *arc_turbina = arc_container_create(content, "TURBINA", 322, 104);
 }
 
 lv_obj_t *sensor_create(lv_obj_t *parent, int x, int y) {
@@ -83,7 +151,9 @@ lv_obj_t *sensor_create(lv_obj_t *parent, int x, int y) {
     return container;
 }
 
-lv_obj_t *sensor_ar_create(lv_obj_t *parent, int x, int y, int label_temp_x, int label_temp_y, int label_ar_x, int label_ar_y) {
+sensor_obj_t sensor_ar_create(lv_obj_t *parent, int x, int y, int label_temp_x, int label_temp_y, int label_ar_x, int label_ar_y) {
+    sensor_obj_t sensor_ar_obj = malloc(sizeof(s_sensor_obj_t));
+
     lv_obj_t *container = sensor_create(parent, x, y);
 
     lv_obj_t *label_temp = lv_label_create(container);
@@ -107,10 +177,14 @@ lv_obj_t *sensor_ar_create(lv_obj_t *parent, int x, int y, int label_temp_x, int
     lv_label_set_text(label_temp_value, "0 C");
     lv_obj_center(label_temp_value);
 
-    return container;
+    sensor_ar_obj->label = label_temp_value;
+    sensor_ar_obj->value = 0;
+
+    return sensor_ar_obj;
 }
 
-lv_obj_t *sensor_grad_create(lv_obj_t *parent, int x, int y, int label_grad_x, int label_grad_y) {
+sensor_obj_t *sensor_grad_create(lv_obj_t *parent, int x, int y, int label_grad_x, int label_grad_y) {
+    sensor_obj_t sensor_grad_obj = malloc(sizeof(s_sensor_obj_t));
     lv_obj_t *container = sensor_create(parent, x, y);
 
     lv_obj_t *label_grad = lv_label_create(container);
@@ -129,10 +203,15 @@ lv_obj_t *sensor_grad_create(lv_obj_t *parent, int x, int y, int label_grad_x, i
     lv_label_set_text(label_temp_value, "0 C");
     lv_obj_center(label_temp_value);
 
-    return container;
+    sensor_grad_obj->label = label_temp_value;
+    sensor_grad_obj->value = 0;
+
+    return sensor_grad_obj;
 }
 
-lv_obj_t *sensor_grao_create(lv_obj_t *parent, int x, int y, int label_temp_x, int label_temp_y, int label_grao_x, int label_grao_y) {
+sensor_obj_t *sensor_grao_create(lv_obj_t *parent, int x, int y, int label_temp_x, int label_temp_y, int label_grao_x, int label_grao_y) {
+    sensor_obj_t sensor_grao_obj = malloc(sizeof(s_sensor_obj_t));
+
     lv_obj_t *container = sensor_create(parent, x, y);
 
     lv_obj_t *label_temp = lv_label_create(container);
@@ -156,10 +235,15 @@ lv_obj_t *sensor_grao_create(lv_obj_t *parent, int x, int y, int label_temp_x, i
     lv_label_set_text(label_temp_value, "0 C");
     lv_obj_center(label_temp_value);
 
-    return container;
+    sensor_grao_obj->label = label_temp_value;
+    sensor_grao_obj->value = 0;
+
+    return sensor_grao_obj;
 }
 
-lv_obj_t *arc_container_create(lv_obj_t *parent, char *label, int x, int y) {
+arc_obj_t *arc_container_create(lv_obj_t *parent, char *label, int x, int y) {
+    arc_obj_t arc_obj = malloc(sizeof(s_arc_obj_t));
+
     lv_obj_t *container = container_create(parent);
     lv_obj_set_size(container, 132, 110);
     lv_obj_set_style_bg_color(container, lv_color_hex(0xF1FAEE), 0);
@@ -194,9 +278,12 @@ lv_obj_t *arc_container_create(lv_obj_t *parent, char *label, int x, int y) {
     // user_data->label = arc_label;
 
     // lv_obj_add_event_cb(arc, arc_event_cb, LV_EVENT_VALUE_CHANGED, user_data);
-    lv_event_send(arc, LV_EVENT_VALUE_CHANGED, NULL);
+    // lv_event_send(arc, LV_EVENT_VALUE_CHANGED, NULL);
 
-    return container;
+    arc_obj->label = arc_label;
+    arc_obj->value = 0;
+
+    return arc_obj;
 }
 
 void btn_stage_event_handler(lv_event_t *e) {
@@ -205,17 +292,15 @@ void btn_stage_event_handler(lv_event_t *e) {
 
     manual_mode_obj_t manual_mode_obj = screen_manager->manual_mode_obj;
     content_manager_t content_manager = manual_mode_obj->content_manager;
-    
-    QueueHandle_t input_control_queue = screen_manager->input_control_queue;
 
     input_event_t input_event = malloc(sizeof(s_input_event_t));
     input_event->event = STAGE;
-    input_event->stage = PRE_HEATING; 
+    input_event->stage = PRE_HEATING;
     input_event->input = INPUT_NONE;
     input_event->value = 0;
 
     if (code == LV_EVENT_CLICKED) {
-       xQueueSend(input_control_queue, &input_event , 0);
+        xQueueSend(input_control_queue, &input_event, 0);
     }
 }
 

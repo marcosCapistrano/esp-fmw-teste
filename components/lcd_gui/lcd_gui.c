@@ -1,17 +1,14 @@
 #include "lcd_gui.h"
 
-#include <lvgl.h>
-#include <lvgl_esp32_drivers/lvgl_helpers.h>
-#include <stdio.h>
-
-#include "common_params.h"
-#include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 #include "freertos/task.h"
+#include "esp_log.h"
+
+#include <lvgl.h>
+#include <lvgl_esp32_drivers/lvgl_helpers.h>
 #include "manual_mode.h"
-#include "time.h"
-#include "screen.h"
+#include "screen_manager.h"
 
 #define AUSYX_HOR_RES 480
 #define AUSYX_VER_RES 320
@@ -19,64 +16,57 @@
 
 static const char *TAG = "LCD_GUI";
 
-static lv_disp_draw_buf_t disp_buf;
-static lv_disp_drv_t disp_drv;
-static lv_indev_drv_t indev_drv;
-static lv_indev_t *indev;
-static esp_timer_handle_t periodic_timer;
-
 static void lv_tick_task(void *arg);
 
-void lcd_gui_init() {
+lcd_gui_t lcd_gui_init(controller_data_t controller_data, QueueHandle_t incoming_queue_commands, QueueHandle_t outgoing_queue_lcd) {
+    lcd_gui_t lcd_gui = malloc(sizeof(lcd_gui_t));
+
     lv_init();
     lvgl_driver_init();
 
     int32_t size_in_px = DISP_BUF_SIZE;
     lv_color_t *buf1 = heap_caps_malloc(size_in_px * sizeof(lv_color_t), MALLOC_CAP_DMA);
 
-    lv_disp_draw_buf_init(&disp_buf, buf1, NULL, size_in_px);
+    lv_disp_draw_buf_init(lcd_gui->disp_buf, buf1, NULL, size_in_px);
 
-    lv_disp_drv_init(&disp_drv);
+    lv_disp_drv_init(lcd_gui->disp_drv);
 
-    disp_drv.draw_buf = &disp_buf;
-    disp_drv.flush_cb = disp_driver_flush;
-    disp_drv.hor_res = AUSYX_HOR_RES;
-    disp_drv.ver_res = AUSYX_VER_RES;
-    lv_disp_drv_register(&disp_drv);
+    lcd_gui->disp_drv.draw_buf = lcd_gui->disp_buf;
+    lcd_gui->disp_drv.flush_cb = disp_driver_flush;
+    lcd_gui->disp_drv.hor_res = AUSYX_HOR_RES;
+    lcd_gui->disp_drv.ver_res = AUSYX_VER_RES;
+    lv_disp_drv_register(lcd_gui->disp_drv);
 
-    lv_indev_drv_init(&indev_drv);
-    indev_drv.type = LV_INDEV_TYPE_POINTER;
-    indev_drv.read_cb = touch_driver_read;
+    lv_indev_drv_init(lcd_gui->indev_drv);
+    lcd_gui->indev_drv.type = LV_INDEV_TYPE_POINTER;
+    lcd_gui->indev_drv.read_cb = touch_driver_read;
 
-    indev = lv_indev_drv_register(&indev_drv);
+    lcd_gui->indev = lv_indev_drv_register(lcd_gui->indev_drv);
 
     const esp_timer_create_args_t periodic_timer_args = {
         .callback = &lv_tick_task,
         .name = "lv_tick_task",
     };
 
-    ESP_ERROR_CHECK(esp_timer_create(&periodic_timer_args, &periodic_timer));
-    ESP_ERROR_CHECK(esp_timer_start_periodic(periodic_timer, pdMS_TO_TICKS(LV_TICK_PERIOD_MS)));
+    ESP_ERROR_CHECK(esp_timer_create(&periodic_timer_args, &(lcd_gui->periodic_timer)));
+    ESP_ERROR_CHECK(esp_timer_start_periodic(lcd_gui->periodic_timer, pdMS_TO_TICKS(LV_TICK_PERIOD_MS)));
+
+    lcd_gui->screen_manager = screen_manager_init(controller_data, incoming_queue_commands, outgoing_queue_commands);
+
+    return lcd_gui;
 }
 
 void lcd_gui_update_task(void *pvParameters) {
-    lcd_gui_update_params_t params = (lcd_gui_update_params_t)pvParameters;
-    QueueHandle_t input_control_queue = params->input_control_queue;
-    QueueHandle_t output_notify_queue = params->output_notify_queue;  // Queue com os eventos que chegaram do controlador
-    controller_t controller = params->controller;
+    lcd_gui_t lcd_gui = (lcd_gui_t) pvParameters;
+    screen_manager_t screen_manager = lcd_gui->screen_manager;
+    controller_data_t controller_data = lcd_gui->controller_data;
 
-    screen_manager_t screen_manager = screen_manager_init(lv_scr_act(), input_control_queue, output_notify_queue, controller);
-
-    for(;;) {
-        vTaskDelay(pdMS_TO_TICKS(100));
+    for (;;) {
+        screen_manager_update(screen_manager, controller_data);
     }
 }
 
 void lcd_gui_draw_task(void *pvParameters) {
-    controller_params_t params = (controller_params_t)pvParameters;
-    QueueHandle_t input_control_queue = params->input_control_queue;
-    QueueHandle_t output_notify_queue = params->output_notify_queue;  // Queue com os eventos que chegaram do controlador
-
     SemaphoreHandle_t xGuiSemaphore = xSemaphoreCreateMutex();
 
     for (;;) {
