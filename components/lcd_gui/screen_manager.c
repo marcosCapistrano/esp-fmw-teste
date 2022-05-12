@@ -20,7 +20,7 @@ screen_manager_t screen_manager_init(controller_data_t controller_data, QueueHan
     screen_manager->outgoing_queue_lcd = outgoing_queue_lcd;
     screen_manager->controller_data = controller_data;
 
-    screen_manager->menu_obj = screen_menu_init(screen_manager->main_screen, screen_manager);
+    screen_manager->menu_obj = screen_menu_init(lv_scr_act(), screen_manager);
     screen_manager->manual_mode_obj = NULL;
 
     return screen_manager;
@@ -29,11 +29,10 @@ screen_manager_t screen_manager_init(controller_data_t controller_data, QueueHan
 void screen_manager_update(screen_manager_t screen_manager, controller_data_t controller_data) {
 	switch(screen_manager->current_screen) {
         case MENU:
-            //NAO FAÇO NADA
         break;
 
         case MANUAL_MODE:
-            screen_manual_mode_update(screen_manager->manual_mode_obj);
+            screen_manual_mode_update(screen_manager, screen_manager->manual_mode_obj);
         break;
 
         case AUTO_MODE:

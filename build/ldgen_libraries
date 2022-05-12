@@ -71,11 +71,7 @@
 /home/marcoscapistrano/Documents/Ausyx/fmw-torrador/build/esp-idf/wifi_provisioning/libwifi_provisioning.a
 /home/marcoscapistrano/Documents/Ausyx/fmw-torrador/build/esp-idf/main/libmain.a
 /home/marcoscapistrano/Documents/Ausyx/fmw-torrador/build/esp-idf/controller/libcontroller.a
-/home/marcoscapistrano/Documents/Ausyx/fmw-torrador/build/esp-idf/esp32-idf-sqlite3/libesp32-idf-sqlite3.a
-/home/marcoscapistrano/Documents/Ausyx/fmw-torrador/build/esp-idf/database_controller/libdatabase_controller.a
-/home/marcoscapistrano/Documents/Ausyx/fmw-torrador/build/esp-idf/i2c_manager/libi2c_manager.a
+/home/marcoscapistrano/Documents/Ausyx/fmw-torrador/build/esp-idf/common/libcommon.a
 /home/marcoscapistrano/Documents/Ausyx/fmw-torrador/build/esp-idf/lvgl/liblvgl.a
 /home/marcoscapistrano/Documents/Ausyx/fmw-torrador/build/esp-idf/lcd_gui/liblcd_gui.a
 /home/marcoscapistrano/Documents/Ausyx/fmw-torrador/build/esp-idf/lvgl_esp32_drivers/liblvgl_esp32_drivers.a
-/home/marcoscapistrano/Documents/Ausyx/fmw-torrador/build/esp-idf/web_server/libweb_server.a
-/home/marcoscapistrano/Documents/Ausyx/fmw-torrador/build/esp-idf/wifi_connect/libwifi_connect.a

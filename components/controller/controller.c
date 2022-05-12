@@ -1,12 +1,12 @@
 #include "controller.h"
 
+#include "driver/gpio.h"
+#include "driver/mcpwm.h"
+#include "esp_log.h"
+#include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 #include "freertos/timers.h"
-#include "esp_log.h"
-#include "esp_timer.h"
-#include "driver/gpio.h"
-#include "driver/mcpwm.h"
 
 #define MCPWM_UNIT MCPWM_UNIT_0
 #define MCPWM_TIMER_POTENCIA MCPWM_TIMER_0
@@ -20,6 +20,8 @@
 #define MCPWM_FREQ_HZ 4095
 
 static const char *TAG = "CONTROLLER";
+
+static esp_timer_handle_t timer_handle;
 
 controller_data_t controller_data_init();
 
@@ -37,18 +39,19 @@ controller_t controller_init(QueueHandle_t incoming_queue_commands, QueueHandle_
         .name = "TIMER",
         .skip_unhandled_events = true};
 
-    esp_timer_create(&timer_conf, controller->timer_handle);
-    esp_timer_start_once(*(controller->timer_handle), portMAX_DELAY);
+    esp_timer_create(&timer_conf, &timer_handle);
+    esp_timer_start_once(timer_handle, portMAX_DELAY);
 
     controller->controller_data = controller_data_init();
     controller->incoming_queue_commands = incoming_queue_commands;
     controller->outgoing_queue_lcd = outgoing_queue_lcd;
+    controller->timer_handle = timer_handle;
 
     return controller;
 }
 
 void controller_task(void *pvParameters) {
-    controller_t controller = (controller_t) pvParameters;
+    controller_t controller = (controller_t)pvParameters;
     QueueHandle_t incoming_queue_commands = controller->incoming_queue_commands;
 
     incoming_data_t incoming_data;  // Segura o evento atual
@@ -56,16 +59,25 @@ void controller_task(void *pvParameters) {
 
     for (;;) {
         xStatus = xQueueReceive(incoming_queue_commands, &incoming_data, portMAX_DELAY);
+
+        if (xStatus == pdPASS) {
+            if (incoming_data->reader_type == LCD) {
+                if (incoming_data->stage != STAGE_NONE) {
+                    controller->controller_data->read_stage = incoming_data->stage;
+                } else {
+                    controller->controller_data->read_temp_ar = incoming_data->write_potencia;
+                }
+            }
+        }
     }
 }
 
 controller_data_t controller_data_init() {
     controller_data_t controller_data = malloc(sizeof(s_controller_data_t));
 
-    controller_data->state = OFF;
-    controller_data->mode = MODE_NONE;
-    controller_data->stage = STAGE_NONE;
-
+    controller_data->read_state = OFF;
+    controller_data->read_mode = MODE_NONE;
+    controller_data->read_stage = STAGE_NONE;
 
     controller_data->write_potencia = 0;
     controller_data->write_cilindro = 0;

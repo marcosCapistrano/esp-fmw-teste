@@ -27,7 +27,7 @@ typedef struct s_controller_t {
     QueueHandle_t outgoing_queue_server;
     QueueHandle_t incoming_queue_commands;
     
-    esp_timer_handle_t* timer_handle;
+    esp_timer_handle_t timer_handle;
 
     pwm_t potencia;
     pwm_t cilindro;

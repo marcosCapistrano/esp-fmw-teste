@@ -7,13 +7,8 @@
 #include "screen_manager.h"
 
 typedef struct s_lcd_gui_t {
-    lv_disp_draw_buf_t *disp_buf;
-    lv_disp_drv_t *disp_drv;
-    lv_indev_drv_t *indev_drv;
-    lv_indev_t* indev;
-    esp_timer_handle_t periodic_timer;
-
     screen_manager_t screen_manager;
+    controller_data_t controller_data;
 } s_lcd_gui_t;
 
 typedef struct s_lcd_gui_t *lcd_gui_t;

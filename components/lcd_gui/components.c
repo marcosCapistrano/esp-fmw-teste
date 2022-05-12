@@ -35,6 +35,8 @@ btn_stage_t btn_stage_create(lv_obj_t *parent) {
     btn_stage_t btn_stage = (btn_stage_t)malloc(sizeof(s_btn_stage_t));
     btn_stage->btn = btn;
     btn_stage->label = label;
+    btn_stage->read_stage = OFF;
+    btn_stage->write_stage = OFF;
 
     return btn_stage;
 }
@@ -92,7 +94,9 @@ status_obj_t status_create(lv_obj_t *content, const char *starting_status) {
     return status_obj;
 }
 
-lv_obj_t *chart_create(lv_obj_t *parent) {
+chart_obj_t chart_create(lv_obj_t *parent) {
+    chart_obj_t chart_obj = malloc(sizeof(s_chart_obj_t));
+
     lv_obj_t *chart = lv_chart_create(parent);
     lv_obj_set_pos(chart, 50, 0);
     lv_obj_set_size(chart, 380, 188);
@@ -110,5 +114,7 @@ lv_obj_t *chart_create(lv_obj_t *parent) {
     lv_chart_series_t *ser1 = lv_chart_add_series(chart, lv_palette_main(LV_PALETTE_RED), LV_CHART_AXIS_PRIMARY_Y);
     lv_chart_series_t *ser2 = lv_chart_add_series(chart, lv_palette_main(LV_PALETTE_GREEN), LV_CHART_AXIS_SECONDARY_Y);
 
-	return chart;
+    chart_obj->chart = chart;
+    
+	return chart_obj;
 }

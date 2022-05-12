@@ -33,6 +33,8 @@
     "manual_mode.h": "c",
     "semphr.h": "c",
     "future": "c",
-    "esp_system.h": "c"
+    "esp_system.h": "c",
+    "esp_timer.h": "c",
+    "hash_map": "c"
   }
 }

@@ -27,8 +27,8 @@ void app_main(void) {
     controller = controller_init(incoming_queue_commands, outgoing_queue_lcd);
     lcd_gui = lcd_gui_init(controller->controller_data, incoming_queue_commands, outgoing_queue_lcd);
 
-    // xTaskCreatePinnedToCore(lcd_gui_draw_task, "LCD_GUI_DRAW_TASK", 12000, NULL, 1, NULL, 1);
-    // xTaskCreatePinnedToCore(lcd_gui_update_task, "LCD_GUI_UPDATE_TASK", 12000, NULL, 5, NULL, 1);
-    // xTaskCreatePinnedToCore(controller_task, "TORRADOR_CONTROLLER_TASK", 2048, controller_params, 5, NULL, 1);
+    xTaskCreatePinnedToCore(lcd_gui_draw_task, "LCD_GUI_DRAW_TASK", 12000, lcd_gui, 1, NULL, 1);
+    xTaskCreatePinnedToCore(lcd_gui_update_task, "LCD_GUI_UPDATE_TASK", 12000, lcd_gui, 5, NULL, 1);
+    xTaskCreatePinnedToCore(controller_task, "TORRADOR_CONTROLLER_TASK", 2048, controller, 5, NULL, 1);
     return;
 }

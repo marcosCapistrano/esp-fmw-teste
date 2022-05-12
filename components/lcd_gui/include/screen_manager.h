@@ -39,6 +39,7 @@ typedef struct s_screen_manager_t {
 typedef struct s_screen_manager_t *screen_manager_t;
 
 screen_manager_t screen_manager_init(controller_data_t controller_data, QueueHandle_t incoming_queue_commands, QueueHandle_t outgoing_queue_lcd);
+void screen_manager_update(screen_manager_t screen_manager, controller_data_t controller_data);
 
 void screen_manager_go_back(screen_manager_t screen_manager);
 void screen_manager_set_screen(screen_manager_t screen_manager, screen_t screen);

@@ -2,6 +2,7 @@
 #define COMMON_CONTROLLER_H
 
 #define CONTROLLER_MAX_TIME_MINS 25
+#include <time.h>
 
 typedef enum {
     STATE_NONE,
@@ -23,6 +24,7 @@ typedef enum {
     COOLER,
 } controller_stage_t;
 
+
 // Valores que serão usados para salvar as receitas e mostrar gráfico nas páginas
 typedef struct s_recipe_data_t {
     int pre_heating_temp;
@@ -43,9 +45,13 @@ typedef struct s_sensor_data_t {
 typedef struct s_sensor_data_t *sensor_data_t;
 
 typedef struct s_controller_data_t {
-    controller_state_t state;
-    controller_mode_t mode;
-    controller_stage_t stage;
+    controller_state_t read_state;
+    controller_mode_t read_mode;
+    controller_stage_t read_stage;
+
+    controller_state_t write_state;
+    controller_mode_t write_mode;
+    controller_stage_t write_stage;
 
     recipe_data_t write_recipe_data;
     sensor_data_t write_sensor_data;
@@ -104,5 +110,7 @@ typedef struct s_outgoing_data_t {
 } s_outgoing_data_t;
 
 typedef struct s_outgoing_data_t *outgoing_data_t;
+
+const char *controller_stage_to_string(controller_stage_t stage);
 
 #endif

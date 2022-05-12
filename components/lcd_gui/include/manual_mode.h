@@ -21,21 +21,19 @@ typedef struct s_btn_stage_t *btn_stage_t;
 
 typedef struct s_sensor_obj_t {
     lv_obj_t *label;
-    int value;
+    int read_value;
+    int write_value;
 } s_sensor_obj_t;
 
 typedef struct s_sensor_obj_t *sensor_obj_t;
 
 typedef struct s_arc_obj_t {
     lv_obj_t *arc_label;
-    int value;
+    int read_value;
+    int write_value;
 } s_arc_obj_t;
 
 typedef struct s_arc_obj_t *arc_obj_t;
-
-typedef struct s_chart_obj_t {
-    lv_chart_t *chart;
-} s_chart_obj_t;
 
 typedef struct s_chart_obj_t *chart_obj_t;
 
@@ -53,7 +51,7 @@ typedef struct s_content_manager_t {
     arc_obj_t arc_cilindro_obj;
     arc_obj_t arc_turbina_obj;
 
-    chart_obj_t *chart_obj;
+    chart_obj_t chart_obj;
 } s_content_manager_t;
 
 typedef struct s_content_manager_t *content_manager_t;
@@ -69,5 +67,6 @@ typedef struct s_manual_mode_obj_t {
 typedef struct s_manual_mode_obj_t *manual_mode_obj_t;
 
 manual_mode_obj_t screen_manual_mode_init(lv_obj_t *main_screen, screen_manager_t screen_manager);
+void screen_manual_mode_update(screen_manager_t screen_manager, manual_mode_obj_t manual_mode_obj);
 
 #endif
