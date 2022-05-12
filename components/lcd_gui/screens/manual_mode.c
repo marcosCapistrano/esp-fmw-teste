@@ -25,23 +25,30 @@ manual_mode_obj_t screen_manual_mode_init(lv_obj_t *main_screen, screen_manager_
     lv_obj_t *header = header_create(main_screen, "MODO MANUAL", screen_manager);
 
     manual_mode_obj_t manual_mode_obj = malloc(sizeof(s_manual_mode_obj_t));
-    manual_mode_obj->status_obj = status_create(main_screen, "Carregando...");
+    manual_mode_obj->status_obj = status_create(main_screen);
     manual_mode_obj->content_manager = content_manager_create(main_screen, header);
+
+    screen_manager->current_screen = MANUAL_MODE;
 
     return manual_mode_obj;
 }
 
-void screen_manual_mode_update(screen_manager_t screen_manager, manual_mode_obj_t manual_mode_obj) {
+void screen_manual_mode_update(screen_manager_t screen_manager) {
+    manual_mode_obj_t manual_mode_obj = screen_manager->manual_mode_obj;
     content_manager_t content_manager = manual_mode_obj->content_manager;
 
     switch (content_manager->current_content) {
         case GRAPH:
-
+            update_stage(screen_manager, content_manager);
             break;
 
         case CONTROLS:
             update_stage(screen_manager, content_manager);
             update_controls(screen_manager, content_manager);
+            break;
+
+        default:
+
             break;
     }
 }
@@ -53,18 +60,33 @@ void update_stage(screen_manager_t screen_manager, content_manager_t content_man
     status_obj_t status_obj = manual_mode_obj->status_obj;
     btn_stage_t btn_stage = content_manager->btn_stage;
 
-    controller_stage_t read_stage = controller_data->read_stage;
+    controller_stage_t read_value = controller_data->read_stage;
+    ESP_LOGE("MANUAL", "read_value: %d", read_value);
 
-    if(btn_stage->read_stage != read_stage) {
-        btn_stage->read_stage = read_stage;
-        lv_label_set_text(btn_stage->label, controller_stage_to_string(read_stage));
+    if (status_obj->read_value != read_value) {
+        status_obj->read_value = read_value;
+        lv_label_set_text(status_obj->label, controller_stage_to_string(read_value));
     }
-    if(btn_stage->write_stage != NULL) {
-        incoming_data_t incoming_data = malloc(sizeof(s_incoming_data_t));
+
+    if (btn_stage->read_value != (read_value + 1) % 5) {
+        content_manager->btn_stage->read_value = (read_value + 1) % 5;
+
+        ESP_LOGE("TAG", "SETTING STAGE %d", btn_stage->read_value);
+
+        lv_label_set_text(content_manager->btn_stage->label, controller_stage_to_string_verb(btn_stage->read_value));
+    }
+
+    if (btn_stage->write_value != STAGE_NONE) {
+        incoming_data_t incoming_data = incoming_data_init();
         incoming_data->reader_type = LCD;
-        incoming_data->stage = btn_stage->write_stage;
+
+        incoming_data->state = ON;
+        incoming_data->mode = MANUAL;
+        incoming_data->stage = btn_stage->write_value;
 
         xQueueSend(screen_manager->incoming_queue_commands, &incoming_data, portMAX_DELAY);
+
+        content_manager->btn_stage->write_value = STAGE_NONE;
     }
 }
 
@@ -108,10 +130,9 @@ void update_controls(screen_manager_t screen_manager, content_manager_t content_
     }
 
     if (arc_potencia_obj->write_value != -1) {
-        incoming_data_t incoming_data = malloc(sizeof(s_incoming_data_t));
+        incoming_data_t incoming_data = incoming_data_init();
         incoming_data->reader_type = LCD;
         incoming_data->write_potencia = arc_potencia_obj->write_value;
-        incoming_data->stage = STAGE_NONE;
 
         xQueueSend(screen_manager->incoming_queue_commands, &incoming_data, portMAX_DELAY);
 
@@ -123,15 +144,34 @@ void update_controls(screen_manager_t screen_manager, content_manager_t content_
         lv_label_set_text_fmt(arc_cilindro_obj->arc_label, "%d", cilindro);
     }
 
+    if (arc_cilindro_obj->write_value != -1) {
+        incoming_data_t incoming_data = incoming_data_init();
+        incoming_data->reader_type = LCD;
+        incoming_data->write_cilindro = arc_cilindro_obj->write_value;
+
+        xQueueSend(screen_manager->incoming_queue_commands, &incoming_data, portMAX_DELAY);
+
+        arc_cilindro_obj->write_value = -1;
+    }
+
     if (arc_turbina_obj->read_value != turbina) {
         arc_turbina_obj->read_value = turbina;
         lv_label_set_text_fmt(arc_turbina_obj->arc_label, "%d", turbina);
+    }
+
+    if (arc_turbina_obj->write_value != -1) {
+        incoming_data_t incoming_data = incoming_data_init();
+        incoming_data->reader_type = LCD;
+        incoming_data->write_turbina = arc_turbina_obj->write_value;
+
+        xQueueSend(screen_manager->incoming_queue_commands, &incoming_data, portMAX_DELAY);
+
+        arc_turbina_obj->write_value = -1;
     }
 }
 
 content_manager_t content_manager_create(lv_obj_t *main_screen, lv_obj_t *header) {
     btn_stage_t btn_stage = btn_stage_create(main_screen);
-    lv_obj_add_event_cb(btn_stage->btn, btn_stage_event_handler, LV_EVENT_CLICKED, btn_stage);
 
     lv_obj_t *content = container_create(main_screen);
     lv_obj_set_pos(content, 0, 96);
@@ -140,16 +180,16 @@ content_manager_t content_manager_create(lv_obj_t *main_screen, lv_obj_t *header
     btn_content_t btn_content = btn_content_create(header);
 
     content_manager_t content_manager = malloc(sizeof(s_content_manager_t));
-    content_manager->current_content = GRAPH;
     content_manager->content = content;
     content_manager->btn_content = btn_content;
     content_manager->btn_stage = btn_stage;
 
     content_manager->chart_obj = chart_create(content);
 
-    lv_obj_add_event_cb(btn_content->btn, btn_content_event_handler, LV_EVENT_ALL, content_manager);
-    // lv_obj_add_event_cb(btn_stage->btn, btn_stage_event_handler, LV_EVENT_ALL, screen_manager);
+    lv_obj_add_event_cb(btn_content->btn, btn_content_event_handler, LV_EVENT_CLICKED, content_manager);
+    lv_obj_add_event_cb(btn_stage->btn, btn_stage_event_handler, LV_EVENT_CLICKED, btn_stage);
 
+    content_manager->current_content = GRAPH;
     return content_manager;
 }
 
@@ -159,7 +199,6 @@ void clear_content(lv_obj_t *content) {
 
 void manual_mode_set_content(content_manager_t content_manager, content_t type) {
     clear_content(content_manager->content);
-    content_manager->current_content = type;
 
     switch (type) {
         case GRAPH:
@@ -174,6 +213,7 @@ void manual_mode_set_content(content_manager_t content_manager, content_t type) 
 
             break;
     }
+    content_manager->current_content = type;
 }
 
 void controls_create(content_manager_t content_manager, lv_obj_t *content) {
@@ -311,7 +351,7 @@ arc_obj_t arc_container_create(lv_obj_t *parent, char *label, int x, int y) {
     lv_obj_set_size(arc, 85, 85);
     lv_arc_set_rotation(arc, 135);
     lv_arc_set_bg_angles(arc, 0, 270);
-    lv_arc_set_value(arc, 10);
+    lv_arc_set_value(arc, 0);
     lv_obj_center(arc);
     lv_obj_set_style_translate_y(arc, -5, 0);
 
@@ -329,33 +369,30 @@ arc_obj_t arc_container_create(lv_obj_t *parent, char *label, int x, int y) {
 
     arc_obj->arc_label = arc_label;
     arc_obj->read_value = 0;
+    arc_obj->write_value = -1;
 
     lv_obj_add_event_cb(arc, arc_event_cb, LV_EVENT_VALUE_CHANGED, arc_obj);
-    lv_event_send(arc, LV_EVENT_VALUE_CHANGED, NULL);
 
     return arc_obj;
 }
 
-
 void btn_content_event_handler(lv_event_t *e) {
-    lv_event_code_t code = lv_event_get_code(e);
+    // lv_event_code_t code = lv_event_get_code(e);
     content_manager_t content_manager = (content_manager_t)lv_event_get_user_data(e);
 
-    if (code == LV_EVENT_CLICKED) {
-        if (content_manager->current_content == GRAPH) {
-            manual_mode_set_content(content_manager, CONTROLS);
-            lv_label_set_text(content_manager->btn_content->label, "GRAFICO");
-        } else {
-            manual_mode_set_content(content_manager, GRAPH);
-            lv_label_set_text(content_manager->btn_content->label, "CONTROLES");
-        }
+    if (content_manager->current_content == GRAPH) {
+        manual_mode_set_content(content_manager, CONTROLS);
+        lv_label_set_text(content_manager->btn_content->label, "GRAFICO");
+    } else {
+        manual_mode_set_content(content_manager, GRAPH);
+        lv_label_set_text(content_manager->btn_content->label, "CONTROLES");
     }
 }
 
 void btn_stage_event_handler(lv_event_t *e) {
     btn_stage_t btn_stage = (btn_stage_t)lv_event_get_user_data(e);
 
-    btn_stage->write_stage = PRE_HEATING;
+    btn_stage->write_value = btn_stage->read_value;
 }
 
 btn_content_t btn_content_create(lv_obj_t *parent) {

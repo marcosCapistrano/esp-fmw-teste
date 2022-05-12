@@ -9,6 +9,7 @@
 #include "menu.h"
 
 typedef enum {
+    SCREEN_NONE,
     MENU,
     MANUAL_MODE,
     AUTO_MODE,

@@ -28,15 +28,15 @@ btn_stage_t btn_stage_create(lv_obj_t *parent) {
     lv_obj_set_pos(btn, 26, 58);
     lv_obj_t *label = lv_label_create(btn);
 
-    lv_label_set_text(label, "PRE-AQUECER");
+    lv_label_set_text(label, " --- ");
     lv_obj_set_style_text_font(label, &lv_font_montserrat_10, 0);
     lv_obj_center(label);
 
     btn_stage_t btn_stage = (btn_stage_t)malloc(sizeof(s_btn_stage_t));
     btn_stage->btn = btn;
     btn_stage->label = label;
-    btn_stage->read_stage = OFF;
-    btn_stage->write_stage = OFF;
+    btn_stage->read_value = STAGE_OFF;
+    btn_stage->write_value = STAGE_NONE;
 
     return btn_stage;
 }
@@ -75,7 +75,7 @@ void btn_back_event_handler(lv_event_t *e) {
     }
 }
 
-status_obj_t status_create(lv_obj_t *content, const char *starting_status) {
+status_obj_t status_create(lv_obj_t *content) {
     status_obj_t status_obj = malloc(sizeof(s_status_obj_t));
 
     lv_obj_t *status_title = lv_label_create(content);
@@ -84,12 +84,11 @@ status_obj_t status_create(lv_obj_t *content, const char *starting_status) {
     lv_obj_set_style_text_font(status_title, &lv_font_montserrat_10, 0);
 
     lv_obj_t *status = lv_label_create(content);
-    lv_label_set_text(status, starting_status);
     lv_obj_set_pos(status, 191, 68);
     lv_obj_set_style_text_font(status, &lv_font_montserrat_16, 0);
 
     status_obj->label = status;
-    status_obj->value = starting_status;
+    status_obj->write_value = STAGE_NONE;
 
     return status_obj;
 }

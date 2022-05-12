@@ -17,11 +17,12 @@ typedef enum {
 } controller_mode_t;
 
 typedef enum {
-    STAGE_NONE,
+    STAGE_OFF,
     PRE_HEATING,
     START,
-    END,
     COOLER,
+    END,
+    STAGE_NONE,
 } controller_stage_t;
 
 
@@ -74,6 +75,7 @@ typedef struct s_controller_data_t {
 typedef struct s_controller_data_t *controller_data_t;
 
 typedef enum {
+    READER_NONE,
     LCD,
     SERVER
 } controller_reader_t;
@@ -112,5 +114,8 @@ typedef struct s_outgoing_data_t {
 typedef struct s_outgoing_data_t *outgoing_data_t;
 
 const char *controller_stage_to_string(controller_stage_t stage);
+const char *controller_stage_to_string_verb(controller_stage_t stage);
+
+incoming_data_t incoming_data_init();
 
 #endif

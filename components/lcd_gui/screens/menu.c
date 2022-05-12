@@ -22,6 +22,8 @@ menu_obj_t screen_menu_init(lv_obj_t *main_screen, screen_manager_t screen_manag
     menu_obj->btn_menu_small[1] = btn_auto;
     menu_obj->btn_menu_big = btn_history;
 
+    screen_manager->current_screen = MENU;
+
     return menu_obj;
 }
 

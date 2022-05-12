@@ -8,15 +8,6 @@
 #include "freertos/semphr.h"
 #include "freertos/timers.h"
 
-#define MCPWM_UNIT MCPWM_UNIT_0
-#define MCPWM_TIMER_POTENCIA MCPWM_TIMER_0
-#define MCPWM_TIMER_CILINDRO MCPWM_TIMER_1
-#define MCPWM_TIMER_TURBINA MCPWM_TIMER_2
-
-#define MCPWM_POTENCIA 2
-#define MCPWM_CILINDRO 12
-#define MCPWM_TURBINA 5
-
 #define MCPWM_FREQ_HZ 4095
 
 static const char *TAG = "CONTROLLER";
@@ -52,6 +43,7 @@ controller_t controller_init(QueueHandle_t incoming_queue_commands, QueueHandle_
 
 void controller_task(void *pvParameters) {
     controller_t controller = (controller_t)pvParameters;
+    // controller_data_t controller_data = controller->controller_data;
     QueueHandle_t incoming_queue_commands = controller->incoming_queue_commands;
 
     incoming_data_t incoming_data;  // Segura o evento atual
@@ -61,11 +53,92 @@ void controller_task(void *pvParameters) {
         xStatus = xQueueReceive(incoming_queue_commands, &incoming_data, portMAX_DELAY);
 
         if (xStatus == pdPASS) {
-            if (incoming_data->reader_type == LCD) {
-                if (incoming_data->stage != STAGE_NONE) {
-                    controller->controller_data->read_stage = incoming_data->stage;
-                } else {
-                    controller->controller_data->read_temp_ar = incoming_data->write_potencia;
+            if (incoming_data->state != STATE_NONE) {
+                switch (incoming_data->state) {
+                    case ON:
+                        ESP_LOGE(TAG, "ON");
+                        controller->controller_data->read_state = ON;
+                        break;
+
+                    case OFF:
+                        ESP_LOGE(TAG, "OFF");
+                        controller->controller_data->read_state = OFF;
+                        break;
+
+                    default:;
+                }
+            }
+
+            if (incoming_data->mode != MODE_NONE) {
+                switch (incoming_data->mode) {
+                    case MANUAL:
+                        ESP_LOGE(TAG, "MANUAL");
+                        controller->controller_data->read_mode = MANUAL;
+                        break;
+
+                    case AUTO:
+                        ESP_LOGE(TAG, "AUTO");
+                        controller->controller_data->read_mode = AUTO;
+                        break;
+
+                    default:;
+                }
+            }
+
+            if (incoming_data->stage != STAGE_NONE) {
+                switch (incoming_data->stage) {
+                    case STAGE_OFF:
+                        ESP_LOGE(TAG, "STAGE_OFF");
+                        controller->controller_data->read_state = OFF;
+                        controller->controller_data->read_mode = MODE_NONE;
+                        controller->controller_data->read_stage = STAGE_OFF;
+                        break;
+
+                    case PRE_HEATING:
+                        ESP_LOGE(TAG, "PRE_HEATING");
+                        controller->controller_data->read_stage = PRE_HEATING;
+                        break;
+
+                    case START:
+                        ESP_LOGE(TAG, "START");
+                        controller->controller_data->read_stage = START;
+                        break;
+
+                    case END:
+                        ESP_LOGE(TAG, "END");
+                        controller->controller_data->read_stage = END;
+                        break;
+
+                    case COOLER:
+                        ESP_LOGE(TAG, "COOLER");
+                        controller->controller_data->read_stage = COOLER;
+                        break;
+
+                    default:;
+                }
+            }
+
+            if (controller->controller_data->read_state == ON) {
+                if (controller->controller_data->read_mode == MANUAL) {
+                    if (controller->controller_data->read_stage == PRE_HEATING || controller->controller_data->read_stage == START) {
+                        if (incoming_data->write_potencia != -1) {
+                            ESP_LOGE("POTENCIA", "%d", incoming_data->write_potencia);
+                            controller->controller_data->read_potencia = incoming_data->write_potencia;
+                            pwm_set_duty(controller->potencia, controller->controller_data->read_potencia);
+                        }
+
+                        if (incoming_data->write_cilindro != -1) {
+                            ESP_LOGE("CILINDRO", "%d", incoming_data->write_cilindro);
+                            controller->controller_data->read_cilindro = incoming_data->write_cilindro;
+                            pwm_set_duty(controller->cilindro, controller->controller_data->read_cilindro);
+                        }
+
+                        if (incoming_data->write_turbina != -1) {
+                            ESP_LOGE("TURBINA", "%d", incoming_data->write_turbina);
+                            controller->controller_data->read_turbina = incoming_data->write_turbina;
+                            pwm_set_duty(controller->turbina, controller->controller_data->read_turbina);
+                        }
+                    }
                 }
             }
         }
@@ -77,7 +150,7 @@ controller_data_t controller_data_init() {
 
     controller_data->read_state = OFF;
     controller_data->read_mode = MODE_NONE;
-    controller_data->read_stage = STAGE_NONE;
+    controller_data->read_stage = STAGE_OFF;
 
     controller_data->write_potencia = 0;
     controller_data->write_cilindro = 0;

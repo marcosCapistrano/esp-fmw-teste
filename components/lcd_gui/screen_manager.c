@@ -14,7 +14,7 @@ static void nav_pop(nav_t *nav);
 screen_manager_t screen_manager_init(controller_data_t controller_data, QueueHandle_t incoming_queue_commands, QueueHandle_t outgoing_queue_lcd) {
     screen_manager_t screen_manager = malloc(sizeof(s_screen_manager_t));
     screen_manager->main_screen = lv_scr_act();
-    screen_manager->current_screen = MENU;
+    screen_manager->current_screen = SCREEN_NONE;
     screen_manager->current_nav = nav_init(MENU);
     screen_manager->incoming_queue_commands = incoming_queue_commands;
     screen_manager->outgoing_queue_lcd = outgoing_queue_lcd;
@@ -32,11 +32,14 @@ void screen_manager_update(screen_manager_t screen_manager, controller_data_t co
         break;
 
         case MANUAL_MODE:
-            screen_manual_mode_update(screen_manager, screen_manager->manual_mode_obj);
+            screen_manual_mode_update(screen_manager);
         break;
 
         case AUTO_MODE:
 
+        break;
+
+        default:
         break;
     }
 }
@@ -63,7 +66,7 @@ void screen_manager_go_back(screen_manager_t screen_manager) {
 
 void screen_manager_set_screen(screen_manager_t screen_manager, screen_t screen) {
     clear_screen(screen_manager);
-    screen_manager->current_screen = screen;
+    screen_manager->current_screen = SCREEN_NONE;
 
     nav_t *head = &(screen_manager->current_nav);
     nav_push(head, screen);
