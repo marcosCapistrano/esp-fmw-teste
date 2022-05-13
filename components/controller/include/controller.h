@@ -20,7 +20,7 @@
 
 #include "common_controller.h"
 #include "pwm.h"
-
+#include "adc.h"
 
 typedef struct s_controller_t {
     QueueHandle_t outgoing_queue_lcd;
@@ -32,6 +32,7 @@ typedef struct s_controller_t {
     pwm_t potencia;
     pwm_t cilindro;
     pwm_t turbina;
+    adc_t adc;
 
     controller_data_t controller_data;
 
@@ -40,6 +41,13 @@ typedef struct s_controller_t {
 } s_controller_t;
 
 typedef struct s_controller_t *controller_t;
+
+typedef struct s_pre_heating_params_t {
+    controller_data_t controller_data;
+    adc_t *adc;
+} s_pre_heating_params_t;
+
+typedef struct s_pre_heating_params_t *pre_heating_params_t;
 
 controller_t controller_init(QueueHandle_t incoming_queue_commands, QueueHandle_t outgoing_queue_lcd);
 void controller_task(void *pvParameters); 

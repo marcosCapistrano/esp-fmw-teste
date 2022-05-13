@@ -8,6 +8,9 @@
 #include "freertos/semphr.h"
 #include "freertos/timers.h"
 
+#include "pwm.h"
+#include "adc.h"
+
 #define MCPWM_FREQ_HZ 4095
 
 static const char *TAG = "CONTROLLER";
@@ -15,6 +18,7 @@ static const char *TAG = "CONTROLLER";
 static esp_timer_handle_t timer_handle;
 
 controller_data_t controller_data_init();
+void pre_heating_task(void *pvParameters);
 
 controller_t controller_init(QueueHandle_t incoming_queue_commands, QueueHandle_t outgoing_queue_lcd) {
     controller_t controller = malloc(sizeof(s_controller_t));
@@ -22,7 +26,8 @@ controller_t controller_init(QueueHandle_t incoming_queue_commands, QueueHandle_
     controller->potencia = pwm_init("POTENCIA", MCPWM_UNIT, MCPWM_TIMER_POTENCIA, MCPWM_IO_SIGNAL_POTENCIA, MCPWM_GPIO_NUM_POTENCIA);
     controller->cilindro = pwm_init("CILINDRO", MCPWM_UNIT, MCPWM_TIMER_CILINDRO, MCPWM_IO_SIGNAL_CILINDRO, MCPWM_GPIO_NUM_CILINDRO);
     controller->turbina = pwm_init("TURBINA", MCPWM_UNIT, MCPWM_TIMER_TURBINA, MCPWM_IO_SIGNAL_TURBINA, MCPWM_GPIO_NUM_TURBINA);
-
+    controller->adc = adc_init("ADC TEMP", ADC_CHANNEL_6, ADC_WIDTH_BIT_12, ADC_ATTEN_DB_0);
+    
     esp_timer_create_args_t timer_conf = {
         .callback = NULL,
         .arg = NULL,
@@ -45,6 +50,11 @@ void controller_task(void *pvParameters) {
     controller_t controller = (controller_t)pvParameters;
     // controller_data_t controller_data = controller->controller_data;
     QueueHandle_t incoming_queue_commands = controller->incoming_queue_commands;
+    pre_heating_params_t pre_heating_params = malloc(sizeof(s_pre_heating_params_t));
+    pre_heating_params->adc = &(controller->adc);
+    pre_heating_params->controller_data = controller->controller_data;
+
+    TaskHandle_t *pre_heating_task_handle;
 
     incoming_data_t incoming_data;  // Segura o evento atual
     BaseType_t xStatus;
@@ -97,6 +107,7 @@ void controller_task(void *pvParameters) {
                     case PRE_HEATING:
                         ESP_LOGE(TAG, "PRE_HEATING");
                         controller->controller_data->read_stage = PRE_HEATING;
+                        xTaskCreate(pre_heating_task, "PRE_HEATING", 2048, pre_heating_params, 5, &pre_heating_task_handle);
                         break;
 
                     case START:
@@ -142,6 +153,18 @@ void controller_task(void *pvParameters) {
                 }
             }
         }
+    }
+}
+
+void pre_heating_task(void *pvParameters) {
+    pre_heating_params_t pre_heating_params = (pre_heating_params_t)pvParameters;
+    controller_data_t controller_data = pre_heating_params->controller_data;
+    adc_t *adc = pre_heating_params->adc;
+
+    for(;;) {
+        adc_sample(*adc);
+
+        vTaskDelay(1000);
     }
 }
 

@@ -61,7 +61,6 @@ void update_stage(screen_manager_t screen_manager, content_manager_t content_man
     btn_stage_t btn_stage = content_manager->btn_stage;
 
     controller_stage_t read_value = controller_data->read_stage;
-    ESP_LOGE("MANUAL", "read_value: %d", read_value);
 
     if (status_obj->read_value != read_value) {
         status_obj->read_value = read_value;
@@ -70,8 +69,6 @@ void update_stage(screen_manager_t screen_manager, content_manager_t content_man
 
     if (btn_stage->read_value != (read_value + 1) % 5) {
         content_manager->btn_stage->read_value = (read_value + 1) % 5;
-
-        ESP_LOGE("TAG", "SETTING STAGE %d", btn_stage->read_value);
 
         lv_label_set_text(content_manager->btn_stage->label, controller_stage_to_string_verb(btn_stage->read_value));
     }
