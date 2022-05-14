@@ -43,7 +43,7 @@ btn_stage_t btn_stage_create(lv_obj_t *parent) {
 
 label_timer_t label_timer_create(lv_obj_t *parent) {
     lv_obj_t *label = lv_label_create(parent);
-    lv_obj_set_pos(label, 419, 58);
+    lv_obj_set_pos(label, 409, 61);
 
     lv_label_set_text(label, "--:--");
     lv_obj_set_style_text_font(label, &lv_font_montserrat_20, 0);
