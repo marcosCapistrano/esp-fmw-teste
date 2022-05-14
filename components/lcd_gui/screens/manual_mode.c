@@ -347,12 +347,13 @@ arc_obj_t arc_container_create(lv_obj_t *parent, char *label, int x, int y) {
     lv_obj_set_align(label_arc, LV_ALIGN_BOTTOM_MID);
 
     lv_obj_t *arc = lv_arc_create(container);
-    // lv_obj_set_size(arc, 85, 85);
+    lv_obj_set_size(arc, 85, 85);
     lv_arc_set_rotation(arc, 135);
     lv_arc_set_bg_angles(arc, 0, 270);
     lv_arc_set_value(arc, 0);
     lv_obj_center(arc);
     lv_obj_set_style_translate_y(arc, -5, 0);
+    lv_arc_set_change_rate(arc, 10);
 
     lv_obj_t *arc_label = lv_label_create(container);
     lv_label_set_text(arc_label, "0");

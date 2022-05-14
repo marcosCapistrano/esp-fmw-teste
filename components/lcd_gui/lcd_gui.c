@@ -71,7 +71,7 @@ void lcd_gui_update_task(void *pvParameters) {
     for (;;) {
         screen_manager_update(screen_manager, controller_data);
 
-        vTaskDelay(pdMS_TO_TICKS(250));
+        vTaskDelay(pdMS_TO_TICKS(100));
     }
 }
 
@@ -85,7 +85,7 @@ void lcd_gui_draw_task(void *pvParameters) {
             xSemaphoreGive(xGuiSemaphore);
         }
 
-        vTaskDelay(pdMS_TO_TICKS(5));
+        vTaskDelay(pdMS_TO_TICKS(LV_TICK_PERIOD_MS));
     }
 }
 
