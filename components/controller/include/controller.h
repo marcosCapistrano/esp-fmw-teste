@@ -52,4 +52,7 @@ typedef struct s_pre_heating_params_t *pre_heating_params_t;
 controller_t controller_init(QueueHandle_t incoming_queue_commands, QueueHandle_t outgoing_queue_lcd);
 void controller_task(void *pvParameters); 
 
+static recipe_data_t recipe_data_init();
+static sensor_data_t sensor_data_init();
+
 #endif

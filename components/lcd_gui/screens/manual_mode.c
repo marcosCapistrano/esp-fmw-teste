@@ -62,15 +62,15 @@ void update_stage(screen_manager_t screen_manager, content_manager_t content_man
     status_obj_t status_obj = manual_mode_obj->status_obj;
     btn_stage_t btn_stage = content_manager->btn_stage;
 
-    controller_stage_t read_value = controller_data->read_stage;
+    controller_stage_t read_stage = controller_data->read_stage;
 
-    if (status_obj->read_value != read_value) {
-        status_obj->read_value = read_value;
-        lv_label_set_text(status_obj->label, controller_stage_to_string(read_value));
+    if (status_obj->read_value != read_stage) {
+        status_obj->read_value = read_stage;
+        lv_label_set_text(status_obj->label, controller_stage_to_string(read_stage));
     }
 
-    if (btn_stage->read_value != (read_value + 1) % 5) {
-        content_manager->btn_stage->read_value = (read_value + 1) % 5;
+    if (btn_stage->read_value != (read_stage + 1) % 5) {
+        content_manager->btn_stage->read_value = (read_stage + 1) % 5;
         lv_label_set_text(content_manager->btn_stage->label, controller_stage_to_string_verb(btn_stage->read_value));
     }
 
@@ -86,6 +86,8 @@ void update_stage(screen_manager_t screen_manager, content_manager_t content_man
 
         content_manager->btn_stage->write_value = STAGE_NONE;
     }
+
+
 }
 
 void update_controls(screen_manager_t screen_manager, content_manager_t content_manager) {
@@ -122,28 +124,28 @@ void update_controls(screen_manager_t screen_manager, content_manager_t content_
         lv_label_set_text_fmt(sensor_grad_obj->label, "%d", grad);
     }
 
-    // if (arc_potencia_obj->read_value != potencia) {
-    //     arc_potencia_obj->read_value = potencia;
-    //     lv_label_set_text_fmt(arc_potencia_obj->arc_label, "%d", potencia);
-    // }
+    if (arc_potencia_obj->read_value != potencia) {
+        arc_potencia_obj->read_value = potencia;
+        lv_label_set_text_fmt(arc_potencia_obj->arc_label, "%d", potencia);
+    }
 
-    // if (arc_potencia_obj->write_value != -1) {
-    //     incoming_data_t incoming_data = incoming_data_init();
-    //     incoming_data->reader_type = LCD;
-    //     incoming_data->write_potencia = arc_potencia_obj->write_value;
+    if (arc_potencia_obj->write_value != -1 && arc_potencia_obj->debounced) {
+        incoming_data_t incoming_data = incoming_data_init();
+        incoming_data->reader_type = LCD;
+        incoming_data->write_potencia = arc_potencia_obj->write_value;
 
-    //     xQueueSend(screen_manager->incoming_queue_commands, &incoming_data, portMAX_DELAY);
+        xQueueSend(screen_manager->incoming_queue_commands, &incoming_data, portMAX_DELAY);
 
-    //     arc_potencia_obj->write_value = -1;
-    //     ESP_LOGE("3", "write_value %d", arc_potencia_obj->write_value);
-    // }
+        arc_potencia_obj->write_value = -1;
+        ESP_LOGE("3", "write_value %d", arc_potencia_obj->write_value);
+    }
 
     if (arc_cilindro_obj->read_value != cilindro) {
         arc_cilindro_obj->read_value = cilindro;
         lv_label_set_text_fmt(arc_cilindro_obj->arc_label, "%d", cilindro);
     }
 
-    if (arc_cilindro_obj->write_value != -1) {
+    if (arc_cilindro_obj->write_value != -1 && arc_cilindro_obj->debounced) {
         incoming_data_t incoming_data = incoming_data_init();
         incoming_data->reader_type = LCD;
         incoming_data->write_cilindro = arc_cilindro_obj->write_value;
@@ -158,7 +160,7 @@ void update_controls(screen_manager_t screen_manager, content_manager_t content_
         lv_label_set_text_fmt(arc_turbina_obj->arc_label, "%d", turbina);
     }
 
-    if (arc_turbina_obj->write_value != -1) {
+    if (arc_turbina_obj->write_value != -1 && arc_turbina_obj->debounced) {
         incoming_data_t incoming_data = incoming_data_init();
         incoming_data->reader_type = LCD;
         incoming_data->write_turbina = arc_turbina_obj->write_value;
@@ -171,6 +173,7 @@ void update_controls(screen_manager_t screen_manager, content_manager_t content_
 
 content_manager_t content_manager_create(lv_obj_t *main_screen, lv_obj_t *header) {
     btn_stage_t btn_stage = btn_stage_create(main_screen);
+    label_timer_t label_timer = label_timer_create(main_screen);
 
     lv_obj_t *content = container_create(main_screen);
     lv_obj_set_pos(content, 0, 96);
@@ -324,14 +327,21 @@ sensor_obj_t sensor_grao_create(lv_obj_t *parent, int x, int y, int label_temp_x
     return sensor_grao_obj;
 }
 
-void arc_event_cb(lv_event_t *e) {
+void arc_event_value_changed_cb(lv_event_t *e) {
     lv_obj_t *arc = lv_event_get_target(e);
     arc_obj_t arc_obj = (arc_obj_t)lv_event_get_user_data(e);
 
     lv_label_set_text_fmt(arc_obj->arc_label, "%d", (int)lv_arc_get_value(arc));
 
-    // ESP_LOGE("1", "write_value %d", (int)lv_arc_get_value(arc));
-    // arc_obj->write_value = lv_arc_get_value(arc);
+    ESP_LOGE("1", "write_value %d", (int)lv_arc_get_value(arc));
+    arc_obj->write_value = lv_arc_get_value(arc);
+    arc_obj->debounced = false;
+}
+
+void arc_event_released_cb(lv_event_t *e) {
+    arc_obj_t arc_obj = (arc_obj_t)lv_event_get_user_data(e);
+
+    arc_obj->debounced = true;
 }
 
 arc_obj_t arc_container_create(lv_obj_t *parent, char *label, int x, int y) {
@@ -353,7 +363,7 @@ arc_obj_t arc_container_create(lv_obj_t *parent, char *label, int x, int y) {
     lv_arc_set_value(arc, 0);
     lv_obj_center(arc);
     lv_obj_set_style_translate_y(arc, -5, 0);
-    lv_arc_set_change_rate(arc, 10);
+    // lv_arc_set_change_rate(arc, 1);
 
     lv_obj_t *arc_label = lv_label_create(container);
     lv_label_set_text(arc_label, "0");
@@ -370,8 +380,10 @@ arc_obj_t arc_container_create(lv_obj_t *parent, char *label, int x, int y) {
     arc_obj->arc_label = arc_label;
     arc_obj->read_value = 0;
     arc_obj->write_value = -1;
+    arc_obj->debounced = true;
 
-    lv_obj_add_event_cb(arc, arc_event_cb, LV_EVENT_VALUE_CHANGED, arc_obj);
+    lv_obj_add_event_cb(arc, arc_event_value_changed_cb, LV_EVENT_VALUE_CHANGED, arc_obj);
+    lv_obj_add_event_cb(arc, arc_event_released_cb, LV_EVENT_RELEASED, arc_obj);
 
     return arc_obj;
 }

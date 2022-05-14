@@ -49,9 +49,6 @@ void controller_task(void *pvParameters) {
     controller_t controller = (controller_t)pvParameters;
     controller_data_t controller_data = controller->controller_data;
     QueueHandle_t incoming_queue_commands = controller->incoming_queue_commands;
-    pre_heating_params_t pre_heating_params = malloc(sizeof(s_pre_heating_params_t));
-    pre_heating_params->adc = controller->adc;
-    pre_heating_params->controller_data = controller->controller_data;
 
     TaskHandle_t pre_heating_task_handle;
 
@@ -104,13 +101,21 @@ void controller_task(void *pvParameters) {
                         break;
 
                     case PRE_HEATING:
-                        ESP_LOGE(TAG, "PRE_HEATING");
                         controller_data->read_stage = PRE_HEATING;
+                        controller_data->read_recipe_data = recipe_data_init();
+
+                        pre_heating_params_t pre_heating_params = malloc(sizeof(s_pre_heating_params_t));
+                        pre_heating_params->adc = controller->adc;
+                        pre_heating_params->controller_data = controller_data;
+
+                        ESP_LOGE(TAG, "PRE_HEATING");
                         xTaskCreate(pre_heating_task, "PRE_HEATING", 2048, pre_heating_params, 5, &pre_heating_task_handle);
                         break;
 
                     case START:
                         ESP_LOGE(TAG, "START");
+                        ESP_LOGE(TAG, "Last TEMP: %d", controller_data->read_recipe_data->pre_heating_temp);
+
                         vTaskDelete(pre_heating_task_handle);
                         controller_data->read_stage = START;
                         break;
@@ -160,10 +165,12 @@ void controller_task(void *pvParameters) {
 void pre_heating_task(void *pvParameters) {
     pre_heating_params_t pre_heating_params = (pre_heating_params_t)pvParameters;
     controller_data_t controller_data = pre_heating_params->controller_data;
+    int *pre_heating_temp = &controller_data->read_recipe_data->pre_heating_temp;
+
     adc_t adc = pre_heating_params->adc;
 
     for (;;) {
-        adc_sample(adc);
+        *pre_heating_temp = adc_sample(adc);
         vTaskDelay(pdMS_TO_TICKS(100));
     }
 }
@@ -186,13 +193,38 @@ controller_data_t controller_data_init() {
     controller_data->read_temp_grao = 0;
     controller_data->read_grad = 0;
 
+    controller_data->torra_time = 0;
+    controller_data->resf_time = 0;
+
     /* Dados que os readers mandaram para o controller, se enviaram alguma receita para fazer */
-    controller_data->write_recipe_data = NULL;
-    controller_data->write_sensor_data = NULL;
+    controller_data->write_recipe_data = 0;
+    controller_data->write_sensor_data = 0;
 
     /* Dados que o controller está salvando da receita atual */
-    controller_data->read_recipe_data = NULL;
-    controller_data->read_sensor_data = NULL;
+    controller_data->read_recipe_data = 0;
+    controller_data->read_sensor_data = 0;
 
     return controller_data;
+}
+
+recipe_data_t recipe_data_init() {
+    recipe_data_t recipe_data = malloc(sizeof(s_recipe_data_t));
+
+    recipe_data->pre_heating_temp = 0;
+    // recipe_data->array_potencia = [];
+    // recipe_data->array_cilindro = [];
+    // recipe_data->array_turbina = [];
+
+    return recipe_data;
+}
+
+sensor_data_t sensor_data_init() {
+    sensor_data_t sensor_data = malloc(sizeof(s_sensor_data_t));
+
+    // sensor_data->array_temp_ar = [];
+    // sensor_data->array_temp_grao = [];
+    // sensor_data->array_grad = [];
+    // sensor_data->array_delta_grao = [];
+
+    return sensor_data;
 }

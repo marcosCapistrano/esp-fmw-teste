@@ -41,6 +41,19 @@ btn_stage_t btn_stage_create(lv_obj_t *parent) {
     return btn_stage;
 }
 
+label_timer_t label_timer_create(lv_obj_t *parent) {
+    lv_obj_t *label = lv_label_create(parent);
+    lv_obj_set_pos(label, 419, 58);
+
+    lv_label_set_text(label, "--:--");
+    lv_obj_set_style_text_font(label, &lv_font_montserrat_20, 0);
+
+    label_timer_t label_timer = (label_timer_t)malloc(sizeof(s_label_timer_t));
+    label_timer->read_value = 0;
+
+    return label_timer;
+}
+
 lv_obj_t *header_create(lv_obj_t *parent, const char *title, screen_manager_t screen_manager) {
     lv_obj_t *header = container_create(parent);
     lv_obj_set_size(header, lv_obj_get_width(parent), 50);

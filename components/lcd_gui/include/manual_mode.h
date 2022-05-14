@@ -32,6 +32,7 @@ typedef struct s_arc_obj_t {
     lv_obj_t *arc_label;
     int read_value;
     int write_value;
+    _Bool debounced;
 } s_arc_obj_t;
 
 typedef struct s_arc_obj_t *arc_obj_t;

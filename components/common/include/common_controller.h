@@ -29,7 +29,7 @@ typedef enum {
 // Valores que serão usados para salvar as receitas e mostrar gráfico nas páginas
 typedef struct s_recipe_data_t {
     int pre_heating_temp;
-    int array_pot[CONTROLLER_MAX_TIME_MINS * 2 + 2];
+    int array_potencia[CONTROLLER_MAX_TIME_MINS * 2 + 2];
     int array_cilindro[CONTROLLER_MAX_TIME_MINS * 2 + 2];
     int array_turbina[CONTROLLER_MAX_TIME_MINS * 2 + 2];
 } s_recipe_data_t;
@@ -67,6 +67,9 @@ typedef struct s_controller_data_t {
     int read_temp_ar;
     int read_temp_grao;
     int read_grad;
+
+    time_t torra_time;
+    time_t resf_time;
 
     recipe_data_t read_recipe_data;
     sensor_data_t read_sensor_data;

@@ -29,6 +29,6 @@ void app_main(void) {
 
     xTaskCreatePinnedToCore(lcd_gui_draw_task, "LCD_GUI_DRAW_TASK", 12000, lcd_gui, 1, NULL, 1);
     xTaskCreatePinnedToCore(lcd_gui_update_task, "LCD_GUI_UPDATE_TASK", 12000, lcd_gui, 3, NULL, 1);
-    // xTaskCreatePinnedToCore(controller_task, "TORRADOR_CONTROLLER_TASK", 12000, controller, 5, NULL, 1);
+    xTaskCreatePinnedToCore(controller_task, "TORRADOR_CONTROLLER_TASK", 12000, controller, 5, NULL, 1);
     return;
 }
