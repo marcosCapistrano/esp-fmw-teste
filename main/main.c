@@ -21,14 +21,14 @@ void app_main(void) {
     }
     ESP_ERROR_CHECK(nvs);
 
-    incoming_queue_commands = xQueueCreate(10, sizeof(s_incoming_data_t));
-    outgoing_queue_lcd = xQueueCreate(5, sizeof(s_outgoing_data_t));
+    incoming_queue_commands = xQueueCreate(10, sizeof(incoming_data_t));
+    outgoing_queue_lcd = xQueueCreate(5, sizeof(outgoing_data_t));
 
     controller = controller_init(incoming_queue_commands, outgoing_queue_lcd);
     lcd_gui = lcd_gui_init(controller->controller_data, incoming_queue_commands, outgoing_queue_lcd);
 
     xTaskCreatePinnedToCore(lcd_gui_draw_task, "LCD_GUI_DRAW_TASK", 12000, lcd_gui, 1, NULL, 1);
-    xTaskCreatePinnedToCore(lcd_gui_update_task, "LCD_GUI_UPDATE_TASK", 12000, lcd_gui, 5, NULL, 1);
-    xTaskCreatePinnedToCore(controller_task, "TORRADOR_CONTROLLER_TASK", 12000, controller, 5, NULL, 1);
+    xTaskCreatePinnedToCore(lcd_gui_update_task, "LCD_GUI_UPDATE_TASK", 12000, lcd_gui, 3, NULL, 1);
+    // xTaskCreatePinnedToCore(controller_task, "TORRADOR_CONTROLLER_TASK", 12000, controller, 5, NULL, 1);
     return;
 }

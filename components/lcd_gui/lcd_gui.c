@@ -1,18 +1,18 @@
 #include "lcd_gui.h"
 
+#include <lvgl.h>
+#include <lvgl_esp32_drivers/lvgl_helpers.h>
+
+#include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 #include "freertos/task.h"
-#include "esp_log.h"
-
-#include <lvgl.h>
-#include <lvgl_esp32_drivers/lvgl_helpers.h>
 #include "manual_mode.h"
 #include "screen_manager.h"
 
 #define AUSYX_HOR_RES 480
 #define AUSYX_VER_RES 320
-#define LV_TICK_PERIOD_MS 1
+#define LV_TICK_PERIOD_MS 5
 
 static const char *TAG = "LCD_GUI";
 
@@ -63,7 +63,7 @@ lcd_gui_t lcd_gui_init(controller_data_t controller_data, QueueHandle_t incoming
 }
 
 void lcd_gui_update_task(void *pvParameters) {
-    lcd_gui_t lcd_gui = (lcd_gui_t) pvParameters;
+    lcd_gui_t lcd_gui = (lcd_gui_t)pvParameters;
 
     screen_manager_t screen_manager = lcd_gui->screen_manager;
     controller_data_t controller_data = lcd_gui->controller_data;
@@ -76,7 +76,7 @@ void lcd_gui_update_task(void *pvParameters) {
 }
 
 void lcd_gui_draw_task(void *pvParameters) {
-    lcd_gui_t lcd_gui = (lcd_gui_t) pvParameters;
+    lcd_gui_t lcd_gui = (lcd_gui_t)pvParameters;
     SemaphoreHandle_t xGuiSemaphore = xSemaphoreCreateMutex();
 
     for (;;) {

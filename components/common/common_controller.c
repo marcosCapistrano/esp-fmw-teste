@@ -1,4 +1,5 @@
 #include "common_controller.h"
+#include "esp_log.h"
 
 const char *controller_stage_to_string(controller_stage_t stage) {
     switch (stage) {
@@ -49,6 +50,8 @@ const char *controller_stage_to_string_verb(controller_stage_t stage) {
 
 incoming_data_t incoming_data_init() {
     incoming_data_t incoming_data = malloc(sizeof(s_incoming_data_t));
+
+    ESP_LOGE("CREATION", "%p", incoming_data);
 
     incoming_data->reader_type = READER_NONE;
     incoming_data->sender_id = -1;

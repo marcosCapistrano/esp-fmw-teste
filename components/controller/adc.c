@@ -40,6 +40,7 @@ adc_t adc_init(const char* name, adc1_channel_t adc_channel, adc_bits_width_t ad
 
     // Characterize ADC
     adc->adc_chars = calloc(1, sizeof(esp_adc_cal_characteristics_t));
+    adc->adc_channel = adc_channel;
     esp_adc_cal_value_t val_type = esp_adc_cal_characterize(ADC_UNIT, adc_atten, adc_width, DEFAULT_VREF, adc->adc_chars);
     print_char_val_type(val_type);
 

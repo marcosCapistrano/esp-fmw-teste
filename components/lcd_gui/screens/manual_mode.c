@@ -7,6 +7,8 @@
 #include "lvgl.h"
 #include "screen_manager.h"
 
+static const char *TAG = "MANUAL_MODE";
+
 lv_obj_t *sensor_create(lv_obj_t *parent, int x, int y);
 sensor_obj_t sensor_ar_create(lv_obj_t *parent, int x, int y, int label_temp_x, int label_temp_y, int label_ar_x, int label_ar_y);
 sensor_obj_t sensor_grao_create(lv_obj_t *parent, int x, int y, int label_temp_x, int label_temp_y, int label_grao_x, int label_grao_y);
@@ -69,7 +71,6 @@ void update_stage(screen_manager_t screen_manager, content_manager_t content_man
 
     if (btn_stage->read_value != (read_value + 1) % 5) {
         content_manager->btn_stage->read_value = (read_value + 1) % 5;
-
         lv_label_set_text(content_manager->btn_stage->label, controller_stage_to_string_verb(btn_stage->read_value));
     }
 
@@ -121,20 +122,21 @@ void update_controls(screen_manager_t screen_manager, content_manager_t content_
         lv_label_set_text_fmt(sensor_grad_obj->label, "%d", grad);
     }
 
-    if (arc_potencia_obj->read_value != potencia) {
-        arc_potencia_obj->read_value = potencia;
-        lv_label_set_text_fmt(arc_potencia_obj->arc_label, "%d", potencia);
-    }
+    // if (arc_potencia_obj->read_value != potencia) {
+    //     arc_potencia_obj->read_value = potencia;
+    //     lv_label_set_text_fmt(arc_potencia_obj->arc_label, "%d", potencia);
+    // }
 
-    if (arc_potencia_obj->write_value != -1) {
-        incoming_data_t incoming_data = incoming_data_init();
-        incoming_data->reader_type = LCD;
-        incoming_data->write_potencia = arc_potencia_obj->write_value;
+    // if (arc_potencia_obj->write_value != -1) {
+    //     incoming_data_t incoming_data = incoming_data_init();
+    //     incoming_data->reader_type = LCD;
+    //     incoming_data->write_potencia = arc_potencia_obj->write_value;
 
-        xQueueSend(screen_manager->incoming_queue_commands, &incoming_data, portMAX_DELAY);
+    //     xQueueSend(screen_manager->incoming_queue_commands, &incoming_data, portMAX_DELAY);
 
-        arc_potencia_obj->write_value = -1;
-    }
+    //     arc_potencia_obj->write_value = -1;
+    //     ESP_LOGE("3", "write_value %d", arc_potencia_obj->write_value);
+    // }
 
     if (arc_cilindro_obj->read_value != cilindro) {
         arc_cilindro_obj->read_value = cilindro;
@@ -217,10 +219,9 @@ void controls_create(content_manager_t content_manager, lv_obj_t *content) {
     content_manager->sensor_ar_obj = sensor_ar_create(content, 26, 12, 28, 4, 58, 14);
     content_manager->sensor_grad_obj = sensor_grad_create(content, 175, 12, 29, 10);
     content_manager->sensor_grao_obj = sensor_grao_create(content, 322, 12, 27, 4, 47, 14);
-    content_manager->arc_potencia_obj = arc_container_create(content, "POTENCIA", 26, 104);
-    content_manager->arc_cilindro_obj = arc_container_create(content, "CILINDRO", 175, 104);
-
-    content_manager->arc_turbina_obj = arc_container_create(content, "TURBINA", 322, 104);
+    content_manager->arc_potencia_obj = arc_container_create(content, "POTENCIA", 26, 95);
+    content_manager->arc_cilindro_obj = arc_container_create(content, "CILINDRO", 175, 95);
+    content_manager->arc_turbina_obj = arc_container_create(content, "TURBINA", 322, 95);
 }
 
 lv_obj_t *sensor_create(lv_obj_t *parent, int x, int y) {
@@ -329,7 +330,8 @@ void arc_event_cb(lv_event_t *e) {
 
     lv_label_set_text_fmt(arc_obj->arc_label, "%d", (int)lv_arc_get_value(arc));
 
-    arc_obj->write_value = lv_arc_get_value(arc);
+    // ESP_LOGE("1", "write_value %d", (int)lv_arc_get_value(arc));
+    // arc_obj->write_value = lv_arc_get_value(arc);
 }
 
 arc_obj_t arc_container_create(lv_obj_t *parent, char *label, int x, int y) {
@@ -345,7 +347,7 @@ arc_obj_t arc_container_create(lv_obj_t *parent, char *label, int x, int y) {
     lv_obj_set_align(label_arc, LV_ALIGN_BOTTOM_MID);
 
     lv_obj_t *arc = lv_arc_create(container);
-    lv_obj_set_size(arc, 85, 85);
+    // lv_obj_set_size(arc, 85, 85);
     lv_arc_set_rotation(arc, 135);
     lv_arc_set_bg_angles(arc, 0, 270);
     lv_arc_set_value(arc, 0);
