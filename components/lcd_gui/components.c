@@ -49,6 +49,7 @@ label_timer_t label_timer_create(lv_obj_t *parent) {
     lv_obj_set_style_text_font(label, &lv_font_montserrat_20, 0);
 
     label_timer_t label_timer = (label_timer_t)malloc(sizeof(s_label_timer_t));
+    label_timer->label = label;
     label_timer->read_value = 0;
 
     return label_timer;

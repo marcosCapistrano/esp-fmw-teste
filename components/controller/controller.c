@@ -18,6 +18,7 @@ static esp_timer_handle_t timer_handle;
 
 controller_data_t controller_data_init();
 void pre_heating_task(void *pvParameters);
+void torra_task(void *pvParameters);
 
 controller_t controller_init(QueueHandle_t incoming_queue_commands, QueueHandle_t outgoing_queue_lcd) {
     controller_t controller = malloc(sizeof(s_controller_t));
@@ -51,6 +52,7 @@ void controller_task(void *pvParameters) {
     QueueHandle_t incoming_queue_commands = controller->incoming_queue_commands;
 
     TaskHandle_t pre_heating_task_handle;
+    TaskHandle_t torra_task_handle;
 
     incoming_data_t incoming_data;  // Segura o evento atual
     BaseType_t xStatus;
@@ -103,6 +105,7 @@ void controller_task(void *pvParameters) {
                     case PRE_HEATING:
                         controller_data->read_stage = PRE_HEATING;
                         controller_data->read_recipe_data = recipe_data_init();
+                        controller_data->read_sensor_data = sensor_data_init();
 
                         pre_heating_params_t pre_heating_params = malloc(sizeof(s_pre_heating_params_t));
                         pre_heating_params->adc = controller->adc;
@@ -118,16 +121,34 @@ void controller_task(void *pvParameters) {
 
                         vTaskDelete(pre_heating_task_handle);
                         controller_data->read_stage = START;
+
+                        torra_params_t torra_params = malloc(sizeof(s_torra_params_t));
+                        torra_params->adc = controller->adc;
+                        torra_params->controller_data = controller_data;
+
+                        ESP_LOGE(TAG, "Entering Task");
+                        xTaskCreate(torra_task, "TORRA", 2048, torra_params, 5, &torra_task_handle);
+                        ESP_LOGE(TAG, "Leaving Task");
+                        break;
+
+                    case COOLER:
+                        ESP_LOGE(TAG, "COOLER");
+
+                        vTaskDelete(torra_task_handle);
+
+                        controller_data->read_torra_time = controller_data->elapsed_time;
+                        controller_data->start_time = 0;
+
+                        for (int i = 0; i < 4; i++) {
+                            ESP_LOGI(TAG, "Potencia %d: %d", i, controller_data->read_recipe_data->array_potencia[i]);
+                        }
+
+                        controller_data->read_stage = COOLER;
                         break;
 
                     case END:
                         ESP_LOGE(TAG, "END");
                         controller_data->read_stage = END;
-                        break;
-
-                    case COOLER:
-                        ESP_LOGE(TAG, "COOLER");
-                        controller_data->read_stage = COOLER;
                         break;
 
                     default:;
@@ -158,6 +179,8 @@ void controller_task(void *pvParameters) {
                     }
                 }
             }
+
+            controller_data->read_temp_ar = adc_sample(controller->adc);
         }
     }
 }
@@ -171,6 +194,59 @@ void pre_heating_task(void *pvParameters) {
 
     for (;;) {
         *pre_heating_temp = adc_sample(adc);
+        vTaskDelay(pdMS_TO_TICKS(100));
+    }
+}
+
+void torra_task(void *pvParameters) {
+    torra_params_t torra_params = (torra_params_t)pvParameters;
+    controller_data_t controller_data = torra_params->controller_data;
+
+    recipe_data_t read_recipe_data = controller_data->read_recipe_data;
+    sensor_data_t read_sensor_data = controller_data->read_sensor_data;
+
+    controller_data->start_time = esp_timer_get_time();
+    adc_t adc = torra_params->adc;
+
+    int counter = 0;
+    int last_timer_period = controller_data->start_time;
+
+    // read_sensor_data->array_temp_ar[counter] = adc_sample(adc);
+    // read_sensor_data->array_temp_grao[counter] = adc_sample(adc);
+    // read_sensor_data->array_grad[counter] = 0;
+    // read_sensor_data->array_delta_grao[counter] = 0;
+
+    read_recipe_data->array_potencia[counter] = controller_data->read_potencia;
+    // read_recipe_data->array_cilindro[counter] = controller_data->read_cilindro;
+    // read_recipe_data->array_turbina[counter] = controller_data->read_turbina;
+
+    ESP_LOGI(TAG, "ESTOU");
+    ESP_LOGI(TAG, "SALVANDO %d", controller_data->read_potencia);
+    ESP_LOGI(TAG, "ESTOU");
+
+    for (;;) {
+        // ESP_LOGI(TAG, "ESTOU2");
+        int64_t elapsed_time = esp_timer_get_time() - controller_data->start_time;
+        controller_data->elapsed_time = elapsed_time;
+
+        if ((esp_timer_get_time() - last_timer_period) / 10E5 > 30) {
+            
+            last_timer_period = esp_timer_get_time();
+            counter++;
+
+            ESP_LOGI(TAG, "SALVANDO %d", controller_data->read_potencia);
+            read_sensor_data->array_temp_ar[counter] = adc_sample(adc);
+            read_sensor_data->array_temp_grao[counter] = adc_sample(adc);
+            read_sensor_data->array_grad[counter] = 0;
+            read_sensor_data->array_delta_grao[counter] = 0;
+
+            read_recipe_data->array_potencia[counter] = controller_data->read_potencia;
+            read_recipe_data->array_cilindro[counter] = controller_data->read_cilindro;
+            read_recipe_data->array_turbina[counter] = controller_data->read_turbina;
+
+            ESP_LOGI(TAG, "SALVANDO2 %d", controller_data->read_potencia);
+        }
+
         vTaskDelay(pdMS_TO_TICKS(100));
     }
 }
@@ -193,8 +269,8 @@ controller_data_t controller_data_init() {
     controller_data->read_temp_grao = 0;
     controller_data->read_grad = 0;
 
-    controller_data->torra_time = 0;
-    controller_data->resf_time = 0;
+    controller_data->read_torra_time = 0;
+    controller_data->read_resf_time = 0;
 
     /* Dados que os readers mandaram para o controller, se enviaram alguma receita para fazer */
     controller_data->write_recipe_data = 0;
@@ -211,20 +287,12 @@ recipe_data_t recipe_data_init() {
     recipe_data_t recipe_data = malloc(sizeof(s_recipe_data_t));
 
     recipe_data->pre_heating_temp = 0;
-    // recipe_data->array_potencia = [];
-    // recipe_data->array_cilindro = [];
-    // recipe_data->array_turbina = [];
 
     return recipe_data;
 }
 
 sensor_data_t sensor_data_init() {
     sensor_data_t sensor_data = malloc(sizeof(s_sensor_data_t));
-
-    // sensor_data->array_temp_ar = [];
-    // sensor_data->array_temp_grao = [];
-    // sensor_data->array_grad = [];
-    // sensor_data->array_delta_grao = [];
 
     return sensor_data;
 }

@@ -35,9 +35,6 @@ typedef struct s_controller_t {
     adc_t adc;
 
     controller_data_t controller_data;
-
-    int64_t start_time;
-    int64_t current_time;
 } s_controller_t;
 
 typedef struct s_controller_t *controller_t;
@@ -48,6 +45,14 @@ typedef struct s_pre_heating_params_t {
 } s_pre_heating_params_t;
 
 typedef struct s_pre_heating_params_t *pre_heating_params_t;
+
+typedef struct s_torra_params_t {
+    controller_data_t controller_data;
+
+    adc_t adc;
+} s_torra_params_t;
+
+typedef struct s_torra_params_t *torra_params_t;
 
 controller_t controller_init(QueueHandle_t incoming_queue_commands, QueueHandle_t outgoing_queue_lcd);
 void controller_task(void *pvParameters); 

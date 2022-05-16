@@ -61,10 +61,17 @@ void update_stage(screen_manager_t screen_manager, content_manager_t content_man
 
     status_obj_t status_obj = manual_mode_obj->status_obj;
     btn_stage_t btn_stage = content_manager->btn_stage;
+    label_timer_t label_timer = content_manager->label_timer;
 
     controller_stage_t read_stage = controller_data->read_stage;
 
-    if (status_obj->read_value != read_stage) {
+    uint64_t minutes, seconds;
+    seconds = controller_data->elapsed_time / 10E5;
+    minutes = (seconds / 60) % 60;
+
+    lv_label_set_text_fmt(label_timer->label, "%02d:%02d", (int) minutes, (int) (seconds % 60));
+
+        if (status_obj->read_value != read_stage) {
         status_obj->read_value = read_stage;
         lv_label_set_text(status_obj->label, controller_stage_to_string(read_stage));
     }
@@ -86,8 +93,6 @@ void update_stage(screen_manager_t screen_manager, content_manager_t content_man
 
         content_manager->btn_stage->write_value = STAGE_NONE;
     }
-
-
 }
 
 void update_controls(screen_manager_t screen_manager, content_manager_t content_manager) {
@@ -185,6 +190,7 @@ content_manager_t content_manager_create(lv_obj_t *main_screen, lv_obj_t *header
     content_manager->content = content;
     content_manager->btn_content = btn_content;
     content_manager->btn_stage = btn_stage;
+    content_manager->label_timer = label_timer;
 
     content_manager->chart_obj = chart_create(content);
 
@@ -215,6 +221,7 @@ void manual_mode_set_content(content_manager_t content_manager, content_t type) 
 
             break;
     }
+
     content_manager->current_content = type;
 }
 

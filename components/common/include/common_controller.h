@@ -68,11 +68,14 @@ typedef struct s_controller_data_t {
     int read_temp_grao;
     int read_grad;
 
-    time_t torra_time;
-    time_t resf_time;
+    uint64_t read_torra_time;
+    uint64_t read_resf_time;
 
     recipe_data_t read_recipe_data;
     sensor_data_t read_sensor_data;
+    
+    uint64_t start_time;
+    uint64_t elapsed_time;
 } s_controller_data_t;
 
 typedef struct s_controller_data_t *controller_data_t;

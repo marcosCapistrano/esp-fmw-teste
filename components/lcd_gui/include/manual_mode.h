@@ -39,11 +39,14 @@ typedef struct s_arc_obj_t *arc_obj_t;
 
 typedef struct s_chart_obj_t *chart_obj_t;
 
+typedef struct s_label_timer_t *label_timer_t;
+
 typedef struct s_content_manager_t {
     content_t current_content;
     lv_obj_t *content;
     btn_content_t btn_content;
     btn_stage_t btn_stage;
+    label_timer_t label_timer;
 
     sensor_obj_t sensor_ar_obj;
     sensor_obj_t sensor_grao_obj;
