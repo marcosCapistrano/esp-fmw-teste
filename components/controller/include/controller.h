@@ -54,6 +54,12 @@ typedef struct s_torra_params_t {
 
 typedef struct s_torra_params_t *torra_params_t;
 
+typedef struct s_cooler_params_t {
+    controller_data_t controller_data;
+} s_cooler_params_t;
+
+typedef struct s_cooler_params_t *cooler_params_t;
+
 controller_t controller_init(QueueHandle_t incoming_queue_commands, QueueHandle_t outgoing_queue_lcd);
 void controller_task(void *pvParameters); 
 

@@ -19,6 +19,7 @@ static esp_timer_handle_t timer_handle;
 controller_data_t controller_data_init();
 void pre_heating_task(void *pvParameters);
 void torra_task(void *pvParameters);
+void cooler_task(void *pvParameters);
 
 controller_t controller_init(QueueHandle_t incoming_queue_commands, QueueHandle_t outgoing_queue_lcd) {
     controller_t controller = malloc(sizeof(s_controller_t));
@@ -53,6 +54,7 @@ void controller_task(void *pvParameters) {
 
     TaskHandle_t pre_heating_task_handle;
     TaskHandle_t torra_task_handle;
+    TaskHandle_t cooler_task_handle;
 
     incoming_data_t incoming_data;  // Segura o evento atual
     BaseType_t xStatus;
@@ -112,7 +114,7 @@ void controller_task(void *pvParameters) {
                         pre_heating_params->controller_data = controller_data;
 
                         ESP_LOGE(TAG, "PRE_HEATING");
-                        xTaskCreate(pre_heating_task, "PRE_HEATING", 2048, pre_heating_params, 5, &pre_heating_task_handle);
+                        xTaskCreatePinnedToCore(pre_heating_task, "PRE_HEATING", 2048, pre_heating_params, 5, &pre_heating_task_handle, 1);
                         break;
 
                     case START:
@@ -126,29 +128,31 @@ void controller_task(void *pvParameters) {
                         torra_params->adc = controller->adc;
                         torra_params->controller_data = controller_data;
 
-                        ESP_LOGE(TAG, "Entering Task");
-                        xTaskCreate(torra_task, "TORRA", 2048, torra_params, 5, &torra_task_handle);
-                        ESP_LOGE(TAG, "Leaving Task");
+                        xTaskCreatePinnedToCore(torra_task, "TORRA", 2048, torra_params, 5, &torra_task_handle, 1);
                         break;
 
                     case COOLER:
                         ESP_LOGE(TAG, "COOLER");
 
                         vTaskDelete(torra_task_handle);
-
-                        controller_data->read_torra_time = controller_data->elapsed_time;
-                        controller_data->start_time = 0;
-
-                        for (int i = 0; i < 4; i++) {
-                            ESP_LOGI(TAG, "Potencia %d: %d", i, controller_data->read_recipe_data->array_potencia[i]);
-                        }
-
                         controller_data->read_stage = COOLER;
+
+                        controller_data->start_time = 0;
+                        controller_data->elapsed_time = 0;
+
+                        cooler_params_t cooler_params = malloc(sizeof(s_cooler_params_t));
+                        cooler_params->controller_data = controller_data;
+                        xTaskCreatePinnedToCore(cooler_task, "COOLER", 2048, cooler_params, 5, &cooler_task_handle, 1);
                         break;
 
                     case END:
                         ESP_LOGE(TAG, "END");
+
+                        vTaskDelete(cooler_task_handle);
                         controller_data->read_stage = END;
+                        controller_data->elapsed_time = 0;
+
+                        //FREE MEMORY
                         break;
 
                     default:;
@@ -211,30 +215,16 @@ void torra_task(void *pvParameters) {
     int counter = 0;
     int last_timer_period = controller_data->start_time;
 
-    // read_sensor_data->array_temp_ar[counter] = adc_sample(adc);
-    // read_sensor_data->array_temp_grao[counter] = adc_sample(adc);
-    // read_sensor_data->array_grad[counter] = 0;
-    // read_sensor_data->array_delta_grao[counter] = 0;
-
-    read_recipe_data->array_potencia[counter] = controller_data->read_potencia;
-    // read_recipe_data->array_cilindro[counter] = controller_data->read_cilindro;
-    // read_recipe_data->array_turbina[counter] = controller_data->read_turbina;
-
-    ESP_LOGI(TAG, "ESTOU");
-    ESP_LOGI(TAG, "SALVANDO %d", controller_data->read_potencia);
-    ESP_LOGI(TAG, "ESTOU");
-
     for (;;) {
-        // ESP_LOGI(TAG, "ESTOU2");
         int64_t elapsed_time = esp_timer_get_time() - controller_data->start_time;
         controller_data->elapsed_time = elapsed_time;
+        controller_data->read_torra_time = elapsed_time;
 
         if ((esp_timer_get_time() - last_timer_period) / 10E5 > 30) {
-            
             last_timer_period = esp_timer_get_time();
-            counter++;
 
             ESP_LOGI(TAG, "SALVANDO %d", controller_data->read_potencia);
+
             read_sensor_data->array_temp_ar[counter] = adc_sample(adc);
             read_sensor_data->array_temp_grao[counter] = adc_sample(adc);
             read_sensor_data->array_grad[counter] = 0;
@@ -245,8 +235,25 @@ void torra_task(void *pvParameters) {
             read_recipe_data->array_turbina[counter] = controller_data->read_turbina;
 
             ESP_LOGI(TAG, "SALVANDO2 %d", controller_data->read_potencia);
+            
+            counter++;
         }
 
+        vTaskDelay(pdMS_TO_TICKS(100));
+    }
+}
+
+void cooler_task(void *pvParameters) {
+    cooler_params_t cooler_params = (cooler_params_t)pvParameters;
+    controller_data_t controller_data = cooler_params->controller_data;
+
+    controller_data->start_time = esp_timer_get_time();
+
+    for (;;) {
+        int64_t elapsed_time = esp_timer_get_time() - controller_data->start_time;
+        controller_data->elapsed_time = elapsed_time;
+
+        controller_data->read_resf_time = elapsed_time;
         vTaskDelay(pdMS_TO_TICKS(100));
     }
 }
@@ -268,6 +275,8 @@ controller_data_t controller_data_init() {
     controller_data->read_temp_ar = 0;
     controller_data->read_temp_grao = 0;
     controller_data->read_grad = 0;
+
+    controller_data->elapsed_time = 0;
 
     controller_data->read_torra_time = 0;
     controller_data->read_resf_time = 0;
