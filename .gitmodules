@@ -10,3 +10,6 @@
 [submodule "components/lv_examples"]
 	path = components/lv_examples
 	url = git@github.com:lvgl/lv_demos.git
+[submodule "components/esp32-idf-sqlite3"]
+	path = components/esp32-idf-sqlite3
+	url = https://github.com/siara-cc/esp32-idf-sqlite3
