@@ -1,10 +1,11 @@
 #include "controller.h"
 #include "esp_log.h"
 #include "esp_spiffs.h"
+#include "nvs_flash.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 #include "lcd_gui.h"
-#include "nvs_flash.h"
+// #include "database.h"
 
 static const char* TAG = "MAIN";
 
@@ -52,6 +53,8 @@ void app_main(void) {
     } else {
         ESP_LOGI(TAG, "Partition size: total: %d, used: %d", total, used);
     }
+
+    // database_init();
 
     incoming_queue_commands = xQueueCreate(10, sizeof(incoming_data_t));
     outgoing_queue_lcd = xQueueCreate(5, sizeof(outgoing_data_t));

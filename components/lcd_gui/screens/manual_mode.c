@@ -19,6 +19,7 @@ btn_content_t btn_content_create(lv_obj_t *parent);
 content_manager_t content_manager_create(lv_obj_t *parent, lv_obj_t *header);
 void update_stage(screen_manager_t screen_manager, content_manager_t content_manager);
 void update_controls(screen_manager_t screen_manager, content_manager_t content_manager);
+void update_chart(screen_manager_t screen_manager, content_manager_t content_manager);
 void controls_create(content_manager_t content_manager, lv_obj_t *parent);
 void btn_content_event_handler(lv_event_t *e);
 void btn_stage_event_handler(lv_event_t *e);
@@ -42,6 +43,7 @@ void screen_manual_mode_update(screen_manager_t screen_manager) {
     switch (content_manager->current_content) {
         case GRAPH:
             update_stage(screen_manager, content_manager);
+            update_chart(screen_manager, content_manager);
             break;
 
         case CONTROLS:
@@ -92,6 +94,24 @@ void update_stage(screen_manager_t screen_manager, content_manager_t content_man
         xQueueSend(screen_manager->incoming_queue_commands, &incoming_data, portMAX_DELAY);
 
         content_manager->btn_stage->write_value = STAGE_NONE;
+    }
+}
+
+void update_chart(screen_manager_t screen_manager, content_manager_t content_manager) {
+    controller_data_t controller_data = screen_manager->controller_data;
+    chart_obj_t chart_obj = content_manager->chart_obj;
+
+
+
+    int temp_ar = controller_data->read_temp_ar;
+    int temp_grao = controller_data->read_temp_grao;
+    int grad = controller_data->read_grad;
+
+    if(controller_data->read_state == ON) {
+        if(controller_data->read_stage == PRE_HEATING) {
+            ESP_LOGE(TAG, "%d", temp_ar);
+            chart_draw_pre_heating(chart_obj, controller_data->read_temp_ar);
+        }
     }
 }
 

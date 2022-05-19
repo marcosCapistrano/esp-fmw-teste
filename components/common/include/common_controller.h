@@ -32,6 +32,7 @@ typedef struct s_recipe_data_t {
     int array_potencia[CONTROLLER_MAX_TIME_MINS * 2 + 2];
     int array_cilindro[CONTROLLER_MAX_TIME_MINS * 2 + 2];
     int array_turbina[CONTROLLER_MAX_TIME_MINS * 2 + 2];
+    int array_time[CONTROLLER_MAX_TIME_MINS*2 + 2];
 } s_recipe_data_t;
 
 typedef struct s_recipe_data_t *recipe_data_t;
@@ -41,6 +42,7 @@ typedef struct s_sensor_data_t {
     int array_temp_grao[CONTROLLER_MAX_TIME_MINS * 2 + 2];
     int array_grad[CONTROLLER_MAX_TIME_MINS * 2 + 2];
     int array_delta_grao[CONTROLLER_MAX_TIME_MINS * 2 + 2];
+    int array_time[CONTROLLER_MAX_TIME_MINS*2 + 2];
 } s_sensor_data_t;
 
 typedef struct s_sensor_data_t *sensor_data_t;

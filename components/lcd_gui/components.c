@@ -1,5 +1,6 @@
 #include "components.h"
 
+#include "esp_log.h"
 #include "lvgl.h"
 
 static void btn_back_event_handler(lv_event_t *e);
@@ -114,20 +115,39 @@ chart_obj_t chart_create(lv_obj_t *parent) {
     lv_obj_set_pos(chart, 50, 0);
     lv_obj_set_size(chart, 380, 188);
     lv_obj_set_style_bg_color(chart, lv_color_make(248, 248, 248), 0);
+    lv_obj_center(chart);
     lv_obj_set_style_border_width(chart, 0, 0);
     lv_chart_set_type(chart, LV_CHART_TYPE_LINE);
-    lv_chart_set_range(chart, LV_CHART_AXIS_PRIMARY_Y, 0, 300);
-    lv_chart_set_range(chart, LV_CHART_AXIS_SECONDARY_Y, -100, 100);
-    lv_chart_set_point_count(chart, 12);
 
-    lv_chart_set_axis_tick(chart, LV_CHART_AXIS_PRIMARY_X, 10, 5, 12, 2, true, 30);
-    lv_chart_set_axis_tick(chart, LV_CHART_AXIS_PRIMARY_Y, 10, 5, 6, 5, true, 50);
-    lv_chart_set_axis_tick(chart, LV_CHART_AXIS_SECONDARY_Y, 10, 5, 6, 2, true, 50);
+    // lv_chart_set_range(chart, LV_CHART_AXIS_PRIMARY_X, 0, CONTROLLER_MAX_TIME_MINS * 2 + 2);
+    // lv_chart_set_range(chart, LV_CHART_AXIS_PRIMARY_Y, 0, 10);
+    // lv_chart_set_range(chart, LV_CHART_AXIS_SECONDARY_Y, -10, 10);
 
-    lv_chart_series_t *ser1 = lv_chart_add_series(chart, lv_palette_main(LV_PALETTE_RED), LV_CHART_AXIS_PRIMARY_Y);
-    lv_chart_series_t *ser2 = lv_chart_add_series(chart, lv_palette_main(LV_PALETTE_GREEN), LV_CHART_AXIS_SECONDARY_Y);
+    lv_chart_series_t *temp_ar_series = lv_chart_add_series(chart, lv_palette_main(LV_PALETTE_GREEN), LV_CHART_AXIS_PRIMARY_Y);      // temp ar
+    lv_chart_series_t *temp_grao_series = lv_chart_add_series(chart, lv_palette_main(LV_PALETTE_BLUE), LV_CHART_AXIS_PRIMARY_Y);     // temp grao
+    lv_chart_series_t *grad_series = lv_chart_add_series(chart, lv_palette_main(LV_PALETTE_PINK), LV_CHART_AXIS_PRIMARY_Y);          // grad
+    lv_chart_series_t *delta_grao_series = lv_chart_add_series(chart, lv_palette_main(LV_PALETTE_PINK), LV_CHART_AXIS_SECONDARY_Y);  // grad
+
+    // lv_chart_set_axis_tick(chart, LV_CHART_AXIS_PRIMARY_X, 5, 2, 2, 5, true, 20);
+    // lv_chart_set_axis_tick(chart, LV_CHART_AXIS_PRIMARY_Y, 5, 2, 2, 6, true, 20);
+    // lv_chart_set_axis_tick(chart, LV_CHART_AXIS_SECONDARY_Y, 5, 2, 0, 0, true, 20);
 
     chart_obj->chart = chart;
-    
-	return chart_obj;
+    chart_obj->temp_ar_series = temp_ar_series;
+    chart_obj->temp_grao_series = temp_grao_series;
+    chart_obj->grad_series = grad_series;
+    chart_obj->delta_grao_series = delta_grao_series;
+
+    return chart_obj;
+}
+
+void chart_draw_pre_heating(chart_obj_t chart_obj, int value) {
+    lv_obj_t *chart = chart_obj->chart;
+
+    lv_chart_set_axis_tick(chart, LV_CHART_AXIS_PRIMARY_Y, 5, 2, 2, 6, true, 40);
+    lv_chart_set_range(chart, LV_CHART_AXIS_PRIMARY_Y, 0, value);
+
+    chart_obj->temp_ar_series->y_points[0] = value;
+    lv_chart_refresh(chart);
+    ESP_LOGE("OI", "CHAMANDO?:");
 }

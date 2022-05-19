@@ -1,6 +1,8 @@
 #ifndef LCD_COMPONENTS_H
 #define LCD_COMPONENTS_H
 
+#define CONTROLLER_MAX_TIME_MINS 25
+
 #include "common_controller.h"
 #include "lvgl.h"
 #include "screen_manager.h"
@@ -33,7 +35,13 @@ typedef struct s_status_obj_t {
 } s_status_obj_t;
 
 typedef struct s_chart_obj_t {
-    lv_chart_t *chart;
+    lv_obj_t *chart;
+
+    lv_chart_series_t *temp_grao_series;
+    lv_chart_series_t *temp_ar_series;
+    lv_chart_series_t *grad_series;
+    lv_chart_series_t *delta_grao_series;
+
 } s_chart_obj_t;
 
 typedef struct s_chart_obj_t *chart_obj_t;
@@ -47,4 +55,6 @@ status_obj_t status_create(lv_obj_t *parent);
 chart_obj_t chart_create(lv_obj_t *parent);
 btn_stage_t btn_stage_create(lv_obj_t *parent);
 label_timer_t label_timer_create(lv_obj_t *parent);
+
+void chart_draw_pre_heating(chart_obj_t chart_obj, int value);
 #endif

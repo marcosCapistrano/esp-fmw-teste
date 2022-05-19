@@ -198,6 +198,7 @@ void pre_heating_task(void *pvParameters) {
 
     for (;;) {
         *pre_heating_temp = adc_sample(adc);
+        *controller_data->read_temp_ar = *pre_heating_temp; // Para que o display consiga ver
         vTaskDelay(pdMS_TO_TICKS(100));
     }
 }
