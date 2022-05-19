@@ -14,6 +14,8 @@
 #define MCPWM_IO_SIGNAL_CILINDRO MCPWM1A
 #define MCPWM_IO_SIGNAL_TURBINA MCPWM2A
 
+#define CONTROLLER_MAX_TIME_MINS 25
+
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 #include "esp_timer.h"

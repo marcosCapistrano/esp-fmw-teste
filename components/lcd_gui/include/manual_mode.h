@@ -14,6 +14,9 @@ typedef enum {
 typedef struct s_btn_content_t {
     lv_obj_t *btn;
     lv_obj_t *label;
+
+    content_t read_value;
+    content_t write_value;
 } s_btn_content_t;
 
 typedef struct s_btn_content_t *btn_content_t;

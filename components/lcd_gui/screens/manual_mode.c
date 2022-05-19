@@ -23,6 +23,7 @@ void update_chart(screen_manager_t screen_manager, content_manager_t content_man
 void controls_create(content_manager_t content_manager, lv_obj_t *parent);
 void btn_content_event_handler(lv_event_t *e);
 void btn_stage_event_handler(lv_event_t *e);
+void manual_mode_set_content(content_manager_t content_manager, content_t type);
 
 manual_mode_obj_t screen_manual_mode_init(lv_obj_t *main_screen, screen_manager_t screen_manager) {
     lv_obj_t *header = header_create(main_screen, "MODO MANUAL", screen_manager);
@@ -42,12 +43,10 @@ void screen_manual_mode_update(screen_manager_t screen_manager) {
 
     switch (content_manager->current_content) {
         case GRAPH:
-            update_stage(screen_manager, content_manager);
             update_chart(screen_manager, content_manager);
             break;
 
         case CONTROLS:
-            update_stage(screen_manager, content_manager);
             update_controls(screen_manager, content_manager);
             break;
 
@@ -55,6 +54,8 @@ void screen_manual_mode_update(screen_manager_t screen_manager) {
 
             break;
     }
+
+    update_stage(screen_manager, content_manager);
 }
 
 void update_stage(screen_manager_t screen_manager, content_manager_t content_manager) {
@@ -63,6 +64,7 @@ void update_stage(screen_manager_t screen_manager, content_manager_t content_man
 
     status_obj_t status_obj = manual_mode_obj->status_obj;
     btn_stage_t btn_stage = content_manager->btn_stage;
+    btn_content_t btn_content = content_manager->btn_content;
     label_timer_t label_timer = content_manager->label_timer;
 
     controller_stage_t read_stage = controller_data->read_stage;
@@ -71,11 +73,24 @@ void update_stage(screen_manager_t screen_manager, content_manager_t content_man
     seconds = controller_data->elapsed_time / 10E5;
     minutes = (seconds / 60) % 60;
 
-    lv_label_set_text_fmt(label_timer->label, "%02d:%02d", (int) minutes, (int) (seconds % 60));
+    lv_label_set_text_fmt(label_timer->label, "%02d:%02d", (int)minutes, (int)(seconds % 60));
 
-        if (status_obj->read_value != read_stage) {
+    if (status_obj->read_value != read_stage) {
         status_obj->read_value = read_stage;
         lv_label_set_text(status_obj->label, controller_stage_to_string(read_stage));
+    }
+
+    if (btn_content->read_value != btn_content->write_value) {
+        ESP_LOGE(TAG, "Setting content!");
+        manual_mode_set_content(content_manager, btn_content->write_value);
+
+        if (btn_content->write_value == CONTROLS) {
+            lv_label_set_text(content_manager->btn_content->label, "GRAFICO");
+        } else if (btn_content->write_value == GRAPH) {
+            lv_label_set_text(content_manager->btn_content->label, "CONTROLES");
+        }
+
+        btn_content->read_value = btn_content->write_value;
     }
 
     if (btn_stage->read_value != (read_stage + 1) % 5) {
@@ -101,16 +116,21 @@ void update_chart(screen_manager_t screen_manager, content_manager_t content_man
     controller_data_t controller_data = screen_manager->controller_data;
     chart_obj_t chart_obj = content_manager->chart_obj;
 
-
-
     int temp_ar = controller_data->read_temp_ar;
     int temp_grao = controller_data->read_temp_grao;
     int grad = controller_data->read_grad;
 
-    if(controller_data->read_state == ON) {
-        if(controller_data->read_stage == PRE_HEATING) {
-            ESP_LOGE(TAG, "%d", temp_ar);
-            chart_draw_pre_heating(chart_obj, controller_data->read_temp_ar);
+    if (controller_data->read_state == ON) {
+        switch (controller_data->read_stage) {
+            case PRE_HEATING:
+                chart_draw_pre_heating(chart_obj, controller_data->read_temp_ar);
+                break;
+
+            case START:
+                chart_draw_start(chart_obj, controller_data);
+                break;
+
+            default:;
         }
     }
 }
@@ -212,9 +232,9 @@ content_manager_t content_manager_create(lv_obj_t *main_screen, lv_obj_t *header
     content_manager->btn_stage = btn_stage;
     content_manager->label_timer = label_timer;
 
-    content_manager->chart_obj = chart_create(content);
+    chart_create(content_manager, content);
 
-    lv_obj_add_event_cb(btn_content->btn, btn_content_event_handler, LV_EVENT_CLICKED, content_manager);
+    lv_obj_add_event_cb(btn_content->btn, btn_content_event_handler, LV_EVENT_CLICKED, btn_content);
     lv_obj_add_event_cb(btn_stage->btn, btn_stage_event_handler, LV_EVENT_CLICKED, btn_stage);
 
     content_manager->current_content = GRAPH;
@@ -226,23 +246,26 @@ void clear_content(lv_obj_t *content) {
 }
 
 void manual_mode_set_content(content_manager_t content_manager, content_t type) {
+    content_manager->current_content = type;
+
     clear_content(content_manager->content);
+    ESP_LOGE(TAG, "content cleared");
 
     switch (type) {
         case GRAPH:
-            chart_create(content_manager->content);
+            chart_create(content_manager, content_manager->content);
+            ESP_LOGE(TAG, "chart created");
             break;
 
         case CONTROLS:
             controls_create(content_manager, content_manager->content);
+            ESP_LOGE(TAG, "controls created");
             break;
 
         default:
 
             break;
     }
-
-    content_manager->current_content = type;
 }
 
 void controls_create(content_manager_t content_manager, lv_obj_t *content) {
@@ -416,15 +439,12 @@ arc_obj_t arc_container_create(lv_obj_t *parent, char *label, int x, int y) {
 }
 
 void btn_content_event_handler(lv_event_t *e) {
-    // lv_event_code_t code = lv_event_get_code(e);
-    content_manager_t content_manager = (content_manager_t)lv_event_get_user_data(e);
+    btn_content_t btn_content = (btn_content_t)lv_event_get_user_data(e);
 
-    if (content_manager->current_content == GRAPH) {
-        manual_mode_set_content(content_manager, CONTROLS);
-        lv_label_set_text(content_manager->btn_content->label, "GRAFICO");
-    } else {
-        manual_mode_set_content(content_manager, GRAPH);
-        lv_label_set_text(content_manager->btn_content->label, "CONTROLES");
+    if (btn_content->read_value == GRAPH) {
+        btn_content->write_value = CONTROLS;
+    } else if (btn_content->read_value == CONTROLS) {
+        btn_content->write_value = GRAPH;
     }
 }
 
@@ -447,6 +467,8 @@ btn_content_t btn_content_create(lv_obj_t *parent) {
     btn_content_t btn_content = malloc(sizeof(s_btn_content_t));
     btn_content->btn = btn;
     btn_content->label = label_btn;
+    btn_content->write_value = GRAPH;
+    btn_content->read_value = GRAPH;
 
     return btn_content;
 }

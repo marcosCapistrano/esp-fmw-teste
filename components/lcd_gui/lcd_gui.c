@@ -71,7 +71,7 @@ void lcd_gui_update_task(void *pvParameters) {
     for (;;) {
         screen_manager_update(screen_manager, controller_data);
 
-        vTaskDelay(pdMS_TO_TICKS(100));
+        vTaskDelay(pdMS_TO_TICKS(250));
     }
 }
 

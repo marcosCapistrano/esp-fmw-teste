@@ -114,7 +114,7 @@ void controller_task(void *pvParameters) {
                         pre_heating_params->controller_data = controller_data;
 
                         ESP_LOGE(TAG, "PRE_HEATING");
-                        xTaskCreatePinnedToCore(pre_heating_task, "PRE_HEATING", 2048, pre_heating_params, 5, &pre_heating_task_handle, 1);
+                        xTaskCreatePinnedToCore(pre_heating_task, "PRE_HEATING", 2048, pre_heating_params, 2, &pre_heating_task_handle, 1);
                         break;
 
                     case START:
@@ -152,7 +152,7 @@ void controller_task(void *pvParameters) {
                         controller_data->read_stage = END;
                         controller_data->elapsed_time = 0;
 
-                        //FREE MEMORY
+                        // FREE MEMORY
                         break;
 
                     default:;
@@ -198,7 +198,7 @@ void pre_heating_task(void *pvParameters) {
 
     for (;;) {
         *pre_heating_temp = adc_sample(adc);
-        *controller_data->read_temp_ar = *pre_heating_temp; // Para que o display consiga ver
+        controller_data->read_temp_ar = *pre_heating_temp;  // Para que o display consiga ver
         vTaskDelay(pdMS_TO_TICKS(100));
     }
 }
@@ -216,27 +216,34 @@ void torra_task(void *pvParameters) {
     int counter = 0;
     int last_timer_period = controller_data->start_time;
 
+    read_sensor_data->array_temp_ar[counter] = adc_sample(adc);
+    read_sensor_data->array_temp_grao[counter] = adc_sample(adc);
+    read_sensor_data->array_grad[counter] = 0;
+    read_sensor_data->array_delta_grao[counter] = 0;
+    read_sensor_data->array_time[counter] = counter;
+
+    read_recipe_data->array_potencia[counter] = controller_data->read_potencia;
+    read_recipe_data->array_cilindro[counter] = controller_data->read_cilindro;
+    read_recipe_data->array_turbina[counter] = controller_data->read_turbina;
+    counter++;
+
     for (;;) {
         int64_t elapsed_time = esp_timer_get_time() - controller_data->start_time;
         controller_data->elapsed_time = elapsed_time;
         controller_data->read_torra_time = elapsed_time;
 
+        read_sensor_data->array_temp_ar[counter] = adc_sample(adc);
+        read_sensor_data->array_temp_grao[counter] = adc_sample(adc);
+        read_sensor_data->array_grad[counter] = 0;
+        read_sensor_data->array_delta_grao[counter] = 0;
+    read_sensor_data->array_time[counter] = counter;
+
+        read_recipe_data->array_potencia[counter] = controller_data->read_potencia;
+        read_recipe_data->array_cilindro[counter] = controller_data->read_cilindro;
+        read_recipe_data->array_turbina[counter] = controller_data->read_turbina;
+
         if ((esp_timer_get_time() - last_timer_period) / 10E5 > 30) {
             last_timer_period = esp_timer_get_time();
-
-            ESP_LOGI(TAG, "SALVANDO %d", controller_data->read_potencia);
-
-            read_sensor_data->array_temp_ar[counter] = adc_sample(adc);
-            read_sensor_data->array_temp_grao[counter] = adc_sample(adc);
-            read_sensor_data->array_grad[counter] = 0;
-            read_sensor_data->array_delta_grao[counter] = 0;
-
-            read_recipe_data->array_potencia[counter] = controller_data->read_potencia;
-            read_recipe_data->array_cilindro[counter] = controller_data->read_cilindro;
-            read_recipe_data->array_turbina[counter] = controller_data->read_turbina;
-
-            ESP_LOGI(TAG, "SALVANDO2 %d", controller_data->read_potencia);
-            
             counter++;
         }
 
@@ -298,11 +305,26 @@ recipe_data_t recipe_data_init() {
 
     recipe_data->pre_heating_temp = 0;
 
+    for (int i = 0; i < CONTROLLER_MAX_TIME_MINS * 2 + 2; i++) {
+        recipe_data->array_potencia[i] = -1;
+        recipe_data->array_cilindro[i] = -1;
+        recipe_data->array_turbina[i] = -1;
+        recipe_data->array_time[i] = -1;
+    }
+
     return recipe_data;
 }
 
 sensor_data_t sensor_data_init() {
     sensor_data_t sensor_data = malloc(sizeof(s_sensor_data_t));
+
+    for (int i = 0; i < CONTROLLER_MAX_TIME_MINS * 2 + 2; i++) {
+        sensor_data->array_temp_ar[i] = -1;
+        sensor_data->array_temp_grao[i] = -1;
+        sensor_data->array_grad[i] = -1;
+        sensor_data->array_delta_grao[i] = -1;
+        sensor_data->array_time[i] = -1;
+    }
 
     return sensor_data;
 }

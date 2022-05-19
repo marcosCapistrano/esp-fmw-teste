@@ -58,6 +58,5 @@ uint32_t adc_sample(adc_t adc) {
 
     uint32_t voltage = esp_adc_cal_raw_to_voltage(adc_reading, adc->adc_chars);
 
-    printf("Raw: %d\tVoltage: %dmV\n", adc_reading, voltage);
     return adc_reading;
 }
