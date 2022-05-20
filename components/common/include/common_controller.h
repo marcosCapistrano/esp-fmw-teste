@@ -25,27 +25,37 @@ typedef enum {
     STAGE_NONE,
 } controller_stage_t;
 
+typedef struct s_recipe_data_node_t *recipe_data_node_t;
+typedef struct s_recipe_data_node_t {
+    int potencia;
+    int cilindro;
+    int turbina;
+    uint64_t time;
 
-// Valores que serão usados para salvar as receitas e mostrar gráfico nas páginas
-typedef struct s_recipe_data_t {
-    int pre_heating_temp;
-    int array_potencia[CONTROLLER_MAX_TIME_MINS * 2 + 2];
-    int array_cilindro[CONTROLLER_MAX_TIME_MINS * 2 + 2];
-    int array_turbina[CONTROLLER_MAX_TIME_MINS * 2 + 2];
-    int array_time[CONTROLLER_MAX_TIME_MINS*2 + 2];
-} s_recipe_data_t;
+    recipe_data_node_t next;
+} s_recipe_data_node_t;
 
 typedef struct s_recipe_data_t *recipe_data_t;
+typedef struct s_recipe_data_t {
+    int pre_heating_temp;
+    recipe_data_node_t next;
+} s_recipe_data_t;
 
-typedef struct s_sensor_data_t {
-    int array_temp_ar[CONTROLLER_MAX_TIME_MINS * 2 + 2];
-    int array_temp_grao[CONTROLLER_MAX_TIME_MINS * 2 + 2];
-    int array_grad[CONTROLLER_MAX_TIME_MINS * 2 + 2];
-    int array_delta_grao[CONTROLLER_MAX_TIME_MINS * 2 + 2];
-    int array_time[CONTROLLER_MAX_TIME_MINS*2 + 2];
-} s_sensor_data_t;
+typedef struct s_sensor_data_node_t *sensor_data_node_t;
+typedef struct s_sensor_data_node_t {
+    int temp_ar;
+    int temp_grao;
+    int grad;
+    int delta_grao;
+    uint64_t time;
+
+    sensor_data_node_t next;
+} s_sensor_data_node_t;
 
 typedef struct s_sensor_data_t *sensor_data_t;
+typedef struct s_sensor_data_t {
+    sensor_data_node_t next;
+} s_sensor_data_t;
 
 typedef struct s_controller_data_t {
     controller_state_t read_state;
@@ -75,7 +85,7 @@ typedef struct s_controller_data_t {
 
     recipe_data_t read_recipe_data;
     sensor_data_t read_sensor_data;
-    
+
     uint64_t start_time;
     uint64_t elapsed_time;
 } s_controller_data_t;

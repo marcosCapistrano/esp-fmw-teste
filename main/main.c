@@ -1,11 +1,12 @@
 #include "controller.h"
+#include "database.h"
 #include "esp_log.h"
 #include "esp_spiffs.h"
-#include "nvs_flash.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 #include "lcd_gui.h"
-// #include "database.h"
+#include "nvs_flash.h"
+#include "sqlite3.h"
 
 static const char* TAG = "MAIN";
 
@@ -27,7 +28,7 @@ void app_main(void) {
 
     esp_vfs_spiffs_conf_t conf = {
         .base_path = "/spiffs",
-        .partition_label = NULL,
+        .partition_label = "database",
         .max_files = 5,
         .format_if_mount_failed = true};
 
@@ -54,7 +55,10 @@ void app_main(void) {
         ESP_LOGI(TAG, "Partition size: total: %d, used: %d", total, used);
     }
 
-    // database_init();
+    sqlite3 *test_conn;
+    db_init();
+    db_connection_create(&test_conn);
+    db_create_tables(&test_conn);
 
     incoming_queue_commands = xQueueCreate(10, sizeof(incoming_data_t));
     outgoing_queue_lcd = xQueueCreate(5, sizeof(outgoing_data_t));
