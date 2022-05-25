@@ -1,4 +1,4 @@
-# Install script for directory: /home/marcoscapistrano/Documents/Ausyx/fmw-torrador/components/esp32-idf-sqlite3
+# Install script for directory: /home/marcoscapistrano/Documents/Ausyx/fmw-torrador/components/esp-sqlite3
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)

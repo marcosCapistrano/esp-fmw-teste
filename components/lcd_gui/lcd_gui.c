@@ -12,7 +12,7 @@
 
 #define AUSYX_HOR_RES 480
 #define AUSYX_VER_RES 320
-#define LV_TICK_PERIOD_MS 5
+#define LV_TICK_PERIOD_MS 30
 
 static const char *TAG = "LCD_GUI";
 
@@ -71,7 +71,7 @@ void lcd_gui_update_task(void *pvParameters) {
     for (;;) {
         screen_manager_update(screen_manager, controller_data);
 
-        vTaskDelay(pdMS_TO_TICKS(250));
+        vTaskDelay(pdMS_TO_TICKS(350));
     }
 }
 

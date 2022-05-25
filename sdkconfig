@@ -1226,10 +1226,6 @@ CONFIG_WPA_MBEDTLS_CRYPTO=y
 # end of Supplicant
 
 #
-# Sqlite3
-#
-
-#
 # LVGL configuration
 #
 CONFIG_LV_CONF_SKIP=y

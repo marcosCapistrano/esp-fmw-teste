@@ -127,6 +127,7 @@ void controller_task(void *pvParameters) {
                         torra_params_t torra_params = malloc(sizeof(s_torra_params_t));
                         torra_params->adc = controller->adc;
                         torra_params->controller_data = controller_data;
+                        controller_data->start_time = esp_timer_get_time();
 
                         xTaskCreatePinnedToCore(torra_task, "TORRA", 2048, torra_params, 5, &torra_task_handle, 1);
                         break;
@@ -210,44 +211,26 @@ void torra_task(void *pvParameters) {
     recipe_data_t read_recipe_data = controller_data->read_recipe_data;
     sensor_data_t read_sensor_data = controller_data->read_sensor_data;
 
-    controller_data->start_time = esp_timer_get_time();
     adc_t adc = torra_params->adc;
+    int64_t task_start_time = esp_timer_get_time();
+    int64_t last_timer_period = task_start_time;
 
-    int counter = 0;
-    int last_timer_period = controller_data->start_time;
-
-    read_sensor_data->array_temp_ar[counter] = adc_sample(adc);
-    read_sensor_data->array_temp_grao[counter] = adc_sample(adc);
-    read_sensor_data->array_grad[counter] = 0;
-    read_sensor_data->array_delta_grao[counter] = 0;
-    read_sensor_data->array_time[counter] = counter;
-
-    read_recipe_data->array_potencia[counter] = controller_data->read_potencia;
-    read_recipe_data->array_cilindro[counter] = controller_data->read_cilindro;
-    read_recipe_data->array_turbina[counter] = controller_data->read_turbina;
-    counter++;
+    read_recipe_data->data = recipe_data_node_init(controller_data->read_potencia, controller_data->read_cilindro, controller_data->read_turbina, 0);
+    read_sensor_data->data = sensor_data_node_init(controller_data->read_temp_ar, controller_data->read_temp_grao, 0, 0, 0);
 
     for (;;) {
-        int64_t elapsed_time = esp_timer_get_time() - controller_data->start_time;
-        controller_data->elapsed_time = elapsed_time;
+        int64_t elapsed_time = esp_timer_get_time() - task_start_time;
         controller_data->read_torra_time = elapsed_time;
+        controller_data->elapsed_time = elapsed_time;
 
-        read_sensor_data->array_temp_ar[counter] = adc_sample(adc);
-        read_sensor_data->array_temp_grao[counter] = adc_sample(adc);
-        read_sensor_data->array_grad[counter] = 0;
-        read_sensor_data->array_delta_grao[counter] = 0;
-    read_sensor_data->array_time[counter] = counter;
-
-        read_recipe_data->array_potencia[counter] = controller_data->read_potencia;
-        read_recipe_data->array_cilindro[counter] = controller_data->read_cilindro;
-        read_recipe_data->array_turbina[counter] = controller_data->read_turbina;
-
-        if ((esp_timer_get_time() - last_timer_period) / 10E5 > 30) {
+        if ((esp_timer_get_time() - last_timer_period) / 10E5 > 5) {
             last_timer_period = esp_timer_get_time();
-            counter++;
+
+            push_recipe_data(&read_recipe_data->data, controller_data->read_potencia, controller_data->read_cilindro, controller_data->read_turbina, elapsed_time);
+            push_sensor_data(&read_sensor_data->data, controller_data->read_temp_ar, controller_data->read_temp_grao, 0, 0, elapsed_time);
         }
 
-        vTaskDelay(pdMS_TO_TICKS(100));
+        vTaskDelay(pdMS_TO_TICKS(300));
     }
 }
 
@@ -255,10 +238,10 @@ void cooler_task(void *pvParameters) {
     cooler_params_t cooler_params = (cooler_params_t)pvParameters;
     controller_data_t controller_data = cooler_params->controller_data;
 
-    controller_data->start_time = esp_timer_get_time();
+    int64_t task_start_time = esp_timer_get_time();
 
     for (;;) {
-        int64_t elapsed_time = esp_timer_get_time() - controller_data->start_time;
+        int64_t elapsed_time = esp_timer_get_time() - task_start_time;
         controller_data->elapsed_time = elapsed_time;
 
         controller_data->read_resf_time = elapsed_time;
@@ -282,7 +265,8 @@ controller_data_t controller_data_init() {
     controller_data->read_turbina = 0;
     controller_data->read_temp_ar = 0;
     controller_data->read_temp_grao = 0;
-    controller_data->read_grad = 0;
+    controller_data->read_delta_ar = 0;
+    controller_data->read_delta_grao = 0;
 
     controller_data->elapsed_time = 0;
 
@@ -300,31 +284,68 @@ controller_data_t controller_data_init() {
     return controller_data;
 }
 
-recipe_data_t recipe_data_init() {
+static recipe_data_t recipe_data_init() {
     recipe_data_t recipe_data = malloc(sizeof(s_recipe_data_t));
 
     recipe_data->pre_heating_temp = 0;
-
-    for (int i = 0; i < CONTROLLER_MAX_TIME_MINS * 2 + 2; i++) {
-        recipe_data->array_potencia[i] = -1;
-        recipe_data->array_cilindro[i] = -1;
-        recipe_data->array_turbina[i] = -1;
-        recipe_data->array_time[i] = -1;
-    }
+    recipe_data->data = 0;
 
     return recipe_data;
 }
 
-sensor_data_t sensor_data_init() {
-    sensor_data_t sensor_data = malloc(sizeof(s_sensor_data_t));
+static recipe_data_node_t recipe_data_node_init(int potencia, int cilindro, int turbina, uint64_t time) {
+    recipe_data_node_t new_recipe_data_node = malloc(sizeof(s_recipe_data_node_t));
 
-    for (int i = 0; i < CONTROLLER_MAX_TIME_MINS * 2 + 2; i++) {
-        sensor_data->array_temp_ar[i] = -1;
-        sensor_data->array_temp_grao[i] = -1;
-        sensor_data->array_grad[i] = -1;
-        sensor_data->array_delta_grao[i] = -1;
-        sensor_data->array_time[i] = -1;
+    new_recipe_data_node->potencia = potencia;
+    new_recipe_data_node->cilindro = cilindro;
+    new_recipe_data_node->turbina = turbina;
+    new_recipe_data_node->time = time;
+
+    new_recipe_data_node->next = NULL;
+
+    return new_recipe_data_node;
+}
+
+static void push_recipe_data(recipe_data_node_t *data_node, int potencia, int cilindro, int turbina, uint64_t time) {
+    recipe_data_node_t new_recipe_data_node = recipe_data_node_init(potencia, cilindro, turbina, time);
+
+    recipe_data_node_t temp = *data_node;  // HEAD
+    while (temp->next != NULL) {
+        temp = temp->next;
     }
 
+    temp->next = new_recipe_data_node;
+}
+
+static sensor_data_t sensor_data_init() {
+    sensor_data_t sensor_data = malloc(sizeof(s_sensor_data_t));
+
+    sensor_data->data = 0;
+
     return sensor_data;
+}
+
+static sensor_data_node_t sensor_data_node_init(int temp_ar, int temp_grao, int delta_ar, int delta_grao, uint64_t time) {
+    sensor_data_node_t new_sensor_data_node = malloc(sizeof(s_sensor_data_node_t));
+
+    new_sensor_data_node->temp_ar = temp_ar;
+    new_sensor_data_node->temp_grao = temp_grao;
+    new_sensor_data_node->delta_ar = delta_ar;
+    new_sensor_data_node->delta_grao = delta_grao;
+    new_sensor_data_node->time = time;
+
+    new_sensor_data_node->next = NULL;
+
+    return new_sensor_data_node;
+}
+
+static void push_sensor_data(sensor_data_node_t *data_node, int temp_ar, int temp_grao, int delta_ar, int delta_grao, uint64_t time) {
+    sensor_data_node_t new_sensor_data_node = sensor_data_node_init(temp_ar, temp_grao, delta_ar, delta_grao, time);
+
+    sensor_data_node_t temp = *data_node;  // HEAD
+    while (temp->next != NULL) {
+        temp = temp->next;
+    }
+
+    temp->next = new_sensor_data_node;
 }

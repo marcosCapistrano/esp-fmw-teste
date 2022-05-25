@@ -30,7 +30,7 @@ typedef struct s_recipe_data_node_t {
     int potencia;
     int cilindro;
     int turbina;
-    uint64_t time;
+    int64_t time;
 
     recipe_data_node_t next;
 } s_recipe_data_node_t;
@@ -38,23 +38,23 @@ typedef struct s_recipe_data_node_t {
 typedef struct s_recipe_data_t *recipe_data_t;
 typedef struct s_recipe_data_t {
     int pre_heating_temp;
-    recipe_data_node_t next;
+    recipe_data_node_t data;
 } s_recipe_data_t;
 
 typedef struct s_sensor_data_node_t *sensor_data_node_t;
 typedef struct s_sensor_data_node_t {
     int temp_ar;
     int temp_grao;
-    int grad;
+    int delta_ar;
     int delta_grao;
-    uint64_t time;
+    int64_t time;
 
     sensor_data_node_t next;
 } s_sensor_data_node_t;
 
 typedef struct s_sensor_data_t *sensor_data_t;
 typedef struct s_sensor_data_t {
-    sensor_data_node_t next;
+    sensor_data_node_t data;
 } s_sensor_data_t;
 
 typedef struct s_controller_data_t {
@@ -78,7 +78,8 @@ typedef struct s_controller_data_t {
     int read_turbina;
     int read_temp_ar;
     int read_temp_grao;
-    int read_grad;
+    int read_delta_ar;
+    int read_delta_grao;
 
     uint64_t read_torra_time;
     uint64_t read_resf_time;

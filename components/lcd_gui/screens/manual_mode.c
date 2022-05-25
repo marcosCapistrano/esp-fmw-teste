@@ -118,7 +118,7 @@ void update_chart(screen_manager_t screen_manager, content_manager_t content_man
 
     int temp_ar = controller_data->read_temp_ar;
     int temp_grao = controller_data->read_temp_grao;
-    int grad = controller_data->read_grad;
+    int delta_ar = controller_data->read_delta_ar;
 
     if (controller_data->read_state == ON) {
         switch (controller_data->read_stage) {
@@ -144,7 +144,8 @@ void update_controls(screen_manager_t screen_manager, content_manager_t content_
 
     int temp_ar = controller_data->read_temp_ar;
     int temp_grao = controller_data->read_temp_grao;
-    int grad = controller_data->read_grad;
+    int delta_ar = controller_data->read_delta_ar;
+    int delta_grao = controller_data->read_delta_grao;
 
     sensor_obj_t sensor_ar_obj = content_manager->sensor_ar_obj;
     sensor_obj_t sensor_grao_obj = content_manager->sensor_grao_obj;
@@ -164,9 +165,9 @@ void update_controls(screen_manager_t screen_manager, content_manager_t content_
         lv_label_set_text_fmt(sensor_grao_obj->label, "%d", temp_grao);
     }
 
-    if (sensor_grad_obj->read_value != grad) {
-        sensor_grad_obj->read_value = grad;
-        lv_label_set_text_fmt(sensor_grad_obj->label, "%d", grad);
+    if (sensor_grad_obj->read_value != delta_ar) {
+        sensor_grad_obj->read_value = delta_ar;
+        lv_label_set_text_fmt(sensor_grad_obj->label, "%d", delta_ar);
     }
 
     if (arc_potencia_obj->read_value != potencia) {

@@ -68,4 +68,11 @@ void controller_task(void *pvParameters);
 static recipe_data_t recipe_data_init();
 static sensor_data_t sensor_data_init();
 
+static recipe_data_node_t recipe_data_node_init(int potencia, int cilindro, int turbina, uint64_t time);
+static void push_recipe_data(recipe_data_node_t *data_node, int potencia, int cilindro, int turbina, uint64_t time);
+
+
+static sensor_data_node_t sensor_data_node_init(int temp_ar, int temp_grao, int delta_ar, int delta_grao, uint64_t time);
+static void push_sensor_data(sensor_data_node_t *data_node, int temp_ar, int temp_grao, int delta_ar, int delta_grao, uint64_t time);
+
 #endif

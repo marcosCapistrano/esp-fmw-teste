@@ -108,20 +108,6 @@ status_obj_t status_create(lv_obj_t *content) {
     return status_obj;
 }
 
-static void draw_event_cb(lv_event_t *e) {
-    lv_obj_draw_part_dsc_t *dsc = lv_event_get_draw_part_dsc(e);
-    if (!lv_obj_draw_part_check_type(dsc, &lv_chart_class, LV_CHART_DRAW_PART_TICK_LABEL)) return;
-
-    // int point_count = (int)lv_event_get_user_data(e);
-
-    if (dsc->id == LV_CHART_AXIS_PRIMARY_X && dsc->text) {
-        const char *times[] = {"00:00", "01:00", "02:00", "03:00", "04:00", "05:00", "06:00", "07:00",
-                               "08:00", "09:00", "10:00", "11:00", "12:00", "13:00", "14:00",
-                               "15:00", "16:00", "17:00", "18:00", "19:00", "20:00", "21:00", "22:00", "23:00",
-                               "24:00", "25:00", "26:00"};
-        lv_snprintf(dsc->text, dsc->text_length, "%s", times[dsc->value]);
-    }
-}
 
 void chart_create(content_manager_t content_manager, lv_obj_t *parent) {
     chart_obj_t chart_obj = malloc(sizeof(s_chart_obj_t));
@@ -133,7 +119,8 @@ void chart_create(content_manager_t content_manager, lv_obj_t *parent) {
     lv_obj_center(chart);
     lv_obj_set_style_border_width(chart, 0, 0);
     lv_chart_set_type(chart, LV_CHART_TYPE_LINE);
-
+    lv_chart_set_point_count(chart, 100*sizeof(int));
+    lv_chart_set_zoom_x(chart, 1024);
     // lv_chart_set_range(chart, LV_CHART_AXIS_PRIMARY_X, 0, CONTROLLER_MAX_TIME_MINS * 2 + 2);
     // lv_chart_set_range(chart, LV_CHART_AXIS_PRIMARY_Y, 0, 10);
     // lv_chart_set_range(chart, LV_CHART_AXIS_SECONDARY_Y, -10, 10);
@@ -147,6 +134,7 @@ void chart_create(content_manager_t content_manager, lv_obj_t *parent) {
     // lv_chart_set_axis_tick(chart, LV_CHART_AXIS_PRIMARY_Y, 5, 2, 2, 6, true, 20);
     // lv_chart_set_axis_tick(chart, LV_CHART_AXIS_SECONDARY_Y, 5, 2, 0, 0, true, 20);
 
+
     chart_obj->chart = chart;
     chart_obj->temp_ar_series = temp_ar_series;
     chart_obj->temp_grao_series = temp_grao_series;
@@ -155,7 +143,6 @@ void chart_create(content_manager_t content_manager, lv_obj_t *parent) {
     chart_obj->point_count = 2;
     chart_obj->upper_limit = 10;
     chart_obj->lower_limit = 0;
-    lv_obj_add_event_cb(chart, draw_event_cb, LV_EVENT_DRAW_PART_BEGIN, NULL);
     content_manager->chart_obj = chart_obj;
 }
 
@@ -181,15 +168,11 @@ void chart_draw_start(chart_obj_t chart_obj, controller_data_t controller_data) 
     lv_chart_series_t *grad_series = chart_obj->grad_series;
     lv_chart_series_t *delta_grao_series = chart_obj->delta_grao_series;
 
-    for (int i = 0; i < CONTROLLER_MAX_TIME_MINS * 2 + 2; i++) {
-        int curr_temp_ar = sensor_data->array_temp_ar[i];
-        int curr_temp_grao = sensor_data->array_temp_grao[i];
-
-        if (sensor_data->array_temp_ar[i] == -1) {
-            break;
-        }
-
-        *point_count = i;
+    int counter = 0;
+    sensor_data_node_t node = sensor_data->data;
+    while (node != NULL) {
+        int curr_temp_ar = node->temp_ar;
+        int curr_temp_grao = node->temp_grao;
 
         if (curr_temp_ar < *lower_limit) {
             *lower_limit = curr_temp_ar;
@@ -203,21 +186,20 @@ void chart_draw_start(chart_obj_t chart_obj, controller_data_t controller_data) 
             *upper_limit = curr_temp_grao;
         }
 
-        temp_ar_series->y_points[i] = sensor_data->array_temp_ar[i];
-
-        temp_grao_series->y_points[i] = sensor_data->array_temp_grao[i];
-
-        grad_series->y_points[i] = 3;
-
-        delta_grao_series->y_points[i] = 3;
+        temp_ar_series->y_points[counter] = node->temp_ar;
+        temp_grao_series->y_points[counter] = node->temp_grao;
+        grad_series->y_points[counter] = 3;
+        delta_grao_series->y_points[counter] = 3;
+        node = node->next;
+        counter++;
     }
+    *point_count = counter+1;
 
-    lv_chart_set_axis_tick(chart, LV_CHART_AXIS_PRIMARY_X, 5, 2, CONTROLLER_MAX_TIME_MINS, 6, true, 10);
+    lv_chart_set_axis_tick(chart, LV_CHART_AXIS_PRIMARY_X, 5, 2, *point_count, 6, true, 10);
     lv_chart_set_axis_tick(chart, LV_CHART_AXIS_PRIMARY_Y, 5, 2, *upper_limit / 100, 6, true, 40);
 
     lv_chart_set_range(chart, LV_CHART_AXIS_PRIMARY_Y, *lower_limit, *upper_limit);
 
-    lv_chart_set_point_count(chart, CONTROLLER_MAX_TIME_MINS);
+    // lv_chart_set_point_count(chart, *point_count);
     lv_chart_refresh(chart);
-    ESP_LOGE("MEMORY", "%d", heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
 }
