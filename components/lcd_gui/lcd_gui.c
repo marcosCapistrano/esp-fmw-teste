@@ -12,7 +12,7 @@
 
 #define AUSYX_HOR_RES 480
 #define AUSYX_VER_RES 320
-#define LV_TICK_PERIOD_MS 30
+#define LV_TICK_PERIOD_MS 10
 
 static const char *TAG = "LCD_GUI";
 
@@ -69,6 +69,7 @@ void lcd_gui_update_task(void *pvParameters) {
     controller_data_t controller_data = lcd_gui->controller_data;
 
     for (;;) {
+        ESP_LOGI(TAG, "Update Task..");
         screen_manager_update(screen_manager, controller_data);
 
         vTaskDelay(pdMS_TO_TICKS(350));
@@ -84,6 +85,8 @@ void lcd_gui_draw_task(void *pvParameters) {
             lv_timer_handler();
             xSemaphoreGive(xGuiSemaphore);
         }
+
+        ESP_LOGI(TAG, "Draw Task..");
 
         vTaskDelay(pdMS_TO_TICKS(LV_TICK_PERIOD_MS));
     }

@@ -72,7 +72,6 @@
 /home/marcoscapistrano/Documents/Ausyx/fmw-torrador/build/esp-idf/main/libmain.a
 /home/marcoscapistrano/Documents/Ausyx/fmw-torrador/build/esp-idf/controller/libcontroller.a
 /home/marcoscapistrano/Documents/Ausyx/fmw-torrador/build/esp-idf/common/libcommon.a
-/home/marcoscapistrano/Documents/Ausyx/fmw-torrador/build/esp-idf/esp-sqlite3/libesp-sqlite3.a
 /home/marcoscapistrano/Documents/Ausyx/fmw-torrador/build/esp-idf/database/libdatabase.a
 /home/marcoscapistrano/Documents/Ausyx/fmw-torrador/build/esp-idf/lvgl/liblvgl.a
 /home/marcoscapistrano/Documents/Ausyx/fmw-torrador/build/esp-idf/lcd_gui/liblcd_gui.a

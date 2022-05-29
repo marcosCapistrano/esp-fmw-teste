@@ -2,12 +2,16 @@
 #define DATABASE_H
 
 #include "esp_err.h"
-#include "sqlite3.h"
+#include "esp_spiffs.h"
 #include "common_controller.h"
 
-esp_err_t db_connection_create(sqlite3 **db);
-void db_create_tables(sqlite3 **db);
-void db_init(void);
-void create_new_recipe(sqlite3 **db, const char *recipe_name, recipe_data_t recipe_data, sensor_data_t sensor_data);
+typedef struct s_database_t *database_t;
+typedef struct s_database_t {
+	size_t free_space;
+	esp_vfs_spiffs_conf_t spiffs_conf;
+} s_database_t;
+
+database_t db_init(void);
+
 
 #endif

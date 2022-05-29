@@ -381,3 +381,20 @@ Run Build Command(s):/usr/bin/ninja cmTC_58519 && [1/2] Building C object CMakeF
 
 Source file was:
 int main(void) { return 0; }
+Performing C SOURCE FILE Test COMPILER_HAS_THOSE_TOGGLES succeeded with the following output:
+Change Dir: /home/marcoscapistrano/Documents/Ausyx/fmw-torrador/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/ninja cmTC_4d618 && [1/2] Building C object CMakeFiles/cmTC_4d618.dir/src.c.obj
+[2/2] Linking C executable cmTC_4d618
+
+
+Source file was:
+int main(void) { return 0; }
+Determining if the include file pthread.h exists passed with the following output:
+Change Dir: /home/marcoscapistrano/Documents/Ausyx/fmw-torrador/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/ninja cmTC_4a244 && [1/2] Building C object CMakeFiles/cmTC_4a244.dir/CheckIncludeFile.c.obj
+[2/2] Linking C executable cmTC_4a244
+
+
+

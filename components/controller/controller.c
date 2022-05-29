@@ -61,7 +61,7 @@ void controller_task(void *pvParameters) {
 
     for (;;) {
         xStatus = xQueueReceive(incoming_queue_commands, &incoming_data, portMAX_DELAY);
-
+        ESP_LOGI(TAG, "Controller Task");
         if (xStatus == pdPASS) {
             if (incoming_data->state != STATE_NONE) {
                 switch (incoming_data->state) {
@@ -129,7 +129,7 @@ void controller_task(void *pvParameters) {
                         torra_params->controller_data = controller_data;
                         controller_data->start_time = esp_timer_get_time();
 
-                        xTaskCreatePinnedToCore(torra_task, "TORRA", 2048, torra_params, 5, &torra_task_handle, 1);
+                        xTaskCreatePinnedToCore(torra_task, "TORRA", 2048, torra_params, 4, &torra_task_handle, 1);
                         break;
 
                     case COOLER:
@@ -138,12 +138,15 @@ void controller_task(void *pvParameters) {
                         vTaskDelete(torra_task_handle);
                         controller_data->read_stage = COOLER;
 
-                        controller_data->start_time = 0;
                         controller_data->elapsed_time = 0;
+
+                        int64_t task_start_time = esp_timer_get_time();
+                        int64_t elapsed_time = esp_timer_get_time() - task_start_time;
+                        controller_data->elapsed_time = elapsed_time;
 
                         cooler_params_t cooler_params = malloc(sizeof(s_cooler_params_t));
                         cooler_params->controller_data = controller_data;
-                        xTaskCreatePinnedToCore(cooler_task, "COOLER", 2048, cooler_params, 5, &cooler_task_handle, 1);
+                        xTaskCreatePinnedToCore(cooler_task, "COOLER", 2048, cooler_params, 4, &cooler_task_handle, 1);
                         break;
 
                     case END:
@@ -199,6 +202,7 @@ void pre_heating_task(void *pvParameters) {
 
     for (;;) {
         *pre_heating_temp = adc_sample(adc);
+        ESP_LOGI(TAG, "Pre Heating Task");
         controller_data->read_temp_ar = *pre_heating_temp;  // Para que o display consiga ver
         vTaskDelay(pdMS_TO_TICKS(100));
     }
@@ -219,18 +223,15 @@ void torra_task(void *pvParameters) {
     read_sensor_data->data = sensor_data_node_init(controller_data->read_temp_ar, controller_data->read_temp_grao, 0, 0, 0);
 
     for (;;) {
+        ESP_LOGI(TAG, "Torra Task");
         int64_t elapsed_time = esp_timer_get_time() - task_start_time;
         controller_data->read_torra_time = elapsed_time;
         controller_data->elapsed_time = elapsed_time;
 
-        if ((esp_timer_get_time() - last_timer_period) / 10E5 > 5) {
-            last_timer_period = esp_timer_get_time();
+        push_recipe_data(&read_recipe_data->data, controller_data->read_potencia, controller_data->read_cilindro, controller_data->read_turbina, elapsed_time);
+        push_sensor_data(&read_sensor_data->data, controller_data->read_temp_ar, controller_data->read_temp_grao, 0, 0, elapsed_time);
 
-            push_recipe_data(&read_recipe_data->data, controller_data->read_potencia, controller_data->read_cilindro, controller_data->read_turbina, elapsed_time);
-            push_sensor_data(&read_sensor_data->data, controller_data->read_temp_ar, controller_data->read_temp_grao, 0, 0, elapsed_time);
-        }
-
-        vTaskDelay(pdMS_TO_TICKS(300));
+        vTaskDelay(pdMS_TO_TICKS(5000));
     }
 }
 
@@ -238,13 +239,8 @@ void cooler_task(void *pvParameters) {
     cooler_params_t cooler_params = (cooler_params_t)pvParameters;
     controller_data_t controller_data = cooler_params->controller_data;
 
-    int64_t task_start_time = esp_timer_get_time();
-
     for (;;) {
-        int64_t elapsed_time = esp_timer_get_time() - task_start_time;
-        controller_data->elapsed_time = elapsed_time;
-
-        controller_data->read_resf_time = elapsed_time;
+        // controller_data->read_resf_time = elapsed_time;
         vTaskDelay(pdMS_TO_TICKS(100));
     }
 }
