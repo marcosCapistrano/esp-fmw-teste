@@ -51,6 +51,7 @@ incoming_data_t incoming_data_init() {
     incoming_data->state = STATE_NONE;
     incoming_data->mode = MODE_NONE;
     incoming_data->stage = STAGE_NONE;
+    incoming_data->choice = CHOICE_NONE;
 
     incoming_data->write_recipe_data = NULL;
     incoming_data->write_sensor_data = NULL;

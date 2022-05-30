@@ -50,13 +50,14 @@ adc_t adc_init(const char* name, adc1_channel_t adc_channel, adc_bits_width_t ad
 uint32_t adc_sample(adc_t adc) {
     uint32_t adc_reading = 0;
 
-    for (int i = 0; i < NO_OF_SAMPLES; i++) {
-        adc_reading += adc1_get_raw(adc->adc_channel);
-    }
+    // for (int i = 0; i < NO_OF_SAMPLES; i++) {
+    //     adc_reading += adc1_get_raw(adc->adc_channel);
+    // }
 
-    adc_reading /= NO_OF_SAMPLES;
+    // adc_reading /= NO_OF_SAMPLES;
 
-    uint32_t voltage = esp_adc_cal_raw_to_voltage(adc_reading, adc->adc_chars);
+    // uint32_t voltage = esp_adc_cal_raw_to_voltage(adc_reading, adc->adc_chars);
 
+    adc_reading = adc1_get_raw(adc->adc_channel);
     return adc_reading;
 }

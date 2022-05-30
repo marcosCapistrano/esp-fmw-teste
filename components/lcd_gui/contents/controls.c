@@ -2,22 +2,69 @@
 
 #include "components.h"
 #include "content.h"
+#include "esp_log.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
+#include "freertos/task.h"
 #include "lvgl.h"
 
+typedef struct s_arc_cb_params_t *arc_cb_params_t;
+typedef struct s_arc_cb_params_t {
+    arc_obj_t arc_obj;
+    QueueHandle_t incoming_queue_commands;
+} s_arc_cb_params_t;
+
 content_controls_t content_controls_create(lv_obj_t *content_area, content_manager_t content_manager) {
+    QueueHandle_t incoming_queue_commands = content_manager->incoming_queue_commands;
     content_manager->current_content_type = CONTROLS;
 
     content_controls_t content_controls = (content_controls_t)malloc(sizeof(s_content_controls_t));
 
+    content_controls->content_manager = content_manager;
+
     content_controls->sensor_ar_label = sensor_ar_create(content_area, 26, 12, 28, 4, 58, 14);
     content_controls->sensor_grad_label = sensor_grad_create(content_area, 175, 12, 29, 10);
     content_controls->sensor_grao_label = sensor_grao_create(content_area, 322, 12, 27, 4, 47, 14);
-    content_controls->arc_potencia_obj = arc_container_create(content_area, "POTENCIA", 26, 95, POTENCIA); content_controls->arc_cilindro_obj = arc_container_create(content_area, "CILINDRO", 175, 95, CILINDRO);
-    content_controls->arc_turbina_obj = arc_container_create(content_area, "TURBINA", 322, 95, TURBINA);
+    content_controls->arc_potencia_obj = arc_container_create(content_area, "POTENCIA", 26, 95, POTENCIA, incoming_queue_commands);
+    content_controls->arc_cilindro_obj = arc_container_create(content_area, "CILINDRO", 175, 95, CILINDRO, incoming_queue_commands);
+    content_controls->arc_turbina_obj = arc_container_create(content_area, "TURBINA", 322, 95, TURBINA, incoming_queue_commands);
+
+    controls_init(content_controls);
+
     return content_controls;
 }
 
-void controls_update(content_controls_t content_controls) {
+void controls_init(content_controls_t content_controls) {
+    controller_data_t controller_data = content_controls->content_manager->controller_data;
+
+    lv_label_set_text_fmt(content_controls->sensor_ar_label, "%d", controller_data->read_temp_ar);
+    lv_label_set_text_fmt(content_controls->sensor_grad_label, "%d", controller_data->read_delta_grao);
+    lv_label_set_text_fmt(content_controls->sensor_grao_label, "%d",
+                          controller_data->read_temp_grao);
+
+    lv_arc_set_value(content_controls->arc_potencia_obj->arc, controller_data->read_potencia);
+    lv_arc_set_value(content_controls->arc_cilindro_obj->arc, controller_data->read_cilindro);
+    lv_arc_set_value(content_controls->arc_turbina_obj->arc, controller_data->read_turbina);
+
+    lv_label_set_text_fmt(content_controls->arc_potencia_obj->arc_label, "%d", controller_data->read_potencia);
+    lv_label_set_text_fmt(content_controls->arc_cilindro_obj->arc_label, "%d", controller_data->read_cilindro);
+    lv_label_set_text_fmt(content_controls->arc_turbina_obj->arc_label, "%d",
+                          controller_data->read_turbina);
+}
+
+void controls_update(content_controls_t content_controls, controller_event_t incoming_event) {
+    controller_data_t controller_data = content_controls->content_manager->controller_data;
+
+    if (incoming_event == SENSOR_VALUE_EVENT) {
+        lv_label_set_text_fmt(content_controls->sensor_ar_label, "%d", controller_data->read_temp_ar);
+        lv_label_set_text_fmt(content_controls->sensor_grad_label, "%d", controller_data->read_delta_grao);
+        lv_label_set_text_fmt(content_controls->sensor_grao_label, "%d",
+                              controller_data->read_temp_grao);
+    } else if (incoming_event == ACTUATOR_VALUE_EVENT) {
+        lv_arc_set_value(content_controls->arc_potencia_obj->arc, controller_data->read_potencia);
+        lv_arc_set_value(content_controls->arc_cilindro_obj->arc, controller_data->read_cilindro);
+        lv_arc_set_value(content_controls->arc_turbina_obj->arc, controller_data->read_turbina);
+    }
 }
 
 void controls_delete(content_controls_t content_controls) {
@@ -119,22 +166,39 @@ void arc_event_value_changed_cb(lv_event_t *e) {
     lv_obj_t *arc = lv_event_get_target(e);
     arc_obj_t arc_obj = (arc_obj_t)lv_event_get_user_data(e);
 
-/*
-    use arc_obj->arc_type para mandar pra uma queue especifica
-*/
     lv_label_set_text_fmt(arc_obj->arc_label, "%d", (int)lv_arc_get_value(arc));
+    arc_obj->value = lv_arc_get_value(arc);
 
     arc_obj->debounced = false;
 }
 
 void arc_event_released_cb(lv_event_t *e) {
-    arc_obj_t arc_obj = (arc_obj_t)lv_event_get_user_data(e);
+    arc_cb_params_t arc_cb_params = (arc_cb_params_t)lv_event_get_user_data(e);
+    arc_obj_t arc_obj = arc_cb_params->arc_obj;
 
     arc_obj->debounced = true;
+
+    incoming_data_t incoming_data = incoming_data_init();
+    incoming_data->reader_type = LCD;
+
+    switch (arc_obj->arc_type) {
+        case POTENCIA:
+            incoming_data->write_potencia = arc_obj->value;
+            break;
+
+        case CILINDRO:
+            incoming_data->write_cilindro = arc_obj->value;
+            break;
+
+        case TURBINA:
+            incoming_data->write_turbina = arc_obj->value;
+            break;
+    }
+
+    xQueueSend(arc_cb_params->incoming_queue_commands, &incoming_data, portMAX_DELAY);
 }
 
-
-arc_obj_t arc_container_create(lv_obj_t *parent, char *label, int x, int y, arc_t arc_type) {
+arc_obj_t arc_container_create(lv_obj_t *parent, char *label, int x, int y, arc_t arc_type, QueueHandle_t incoming_queue_commands) {
     arc_obj_t arc_obj = malloc(sizeof(s_arc_obj_t));
 
     lv_obj_t *container = container_create(parent);
@@ -167,12 +231,17 @@ arc_obj_t arc_container_create(lv_obj_t *parent, char *label, int x, int y, arc_
     lv_obj_set_align(arc_unit_label, LV_ALIGN_CENTER);
     lv_obj_set_style_translate_y(arc_unit_label, 10, 0);
 
+    arc_obj->arc = arc;
     arc_obj->arc_type = arc_type;
     arc_obj->arc_label = arc_label;
     arc_obj->debounced = true;
 
+    arc_cb_params_t arc_cb_params = (arc_cb_params_t)malloc(sizeof(s_arc_cb_params_t));
+    arc_cb_params->arc_obj = arc_obj;
+    arc_cb_params->incoming_queue_commands = incoming_queue_commands;
+
     lv_obj_add_event_cb(arc, arc_event_value_changed_cb, LV_EVENT_VALUE_CHANGED, arc_obj);
-    lv_obj_add_event_cb(arc, arc_event_released_cb, LV_EVENT_RELEASED, arc_obj);
+    lv_obj_add_event_cb(arc, arc_event_released_cb, LV_EVENT_RELEASED, arc_cb_params);
 
     return arc_obj;
 }

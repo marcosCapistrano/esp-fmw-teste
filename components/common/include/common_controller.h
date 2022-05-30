@@ -33,6 +33,12 @@ typedef enum {
     STAGE_NONE,
 } controller_stage_t;
 
+typedef enum {
+    SAVE,
+    ERASE,
+    CHOICE_NONE
+} controller_choice_t;
+
 typedef struct s_recipe_data_node_t *recipe_data_node_t;
 typedef struct s_recipe_data_node_t {
     int potencia;
@@ -73,6 +79,7 @@ typedef struct s_controller_data_t {
     controller_state_t write_state;
     controller_mode_t write_mode;
     controller_stage_t write_stage;
+    controller_choice_t write_choice;
 
     recipe_data_t write_recipe_data;
     sensor_data_t write_sensor_data;
@@ -118,6 +125,7 @@ typedef struct s_incoming_data_t {
     controller_state_t state;
     controller_mode_t mode;
     controller_stage_t stage;
+    controller_choice_t choice;
 
     recipe_data_t write_recipe_data;
     recipe_data_t write_sensor_data;

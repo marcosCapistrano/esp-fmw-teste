@@ -43,6 +43,7 @@ typedef struct s_controller_t *controller_t;
 typedef struct s_pre_heating_params_t {
     controller_data_t controller_data;
     adc_t adc;
+    QueueHandle_t event_broadcast_queue;
 } s_pre_heating_params_t;
 
 typedef struct s_pre_heating_params_t *pre_heating_params_t;

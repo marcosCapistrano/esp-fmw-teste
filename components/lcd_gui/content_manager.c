@@ -12,6 +12,8 @@
 #include "lvgl.h"
 
 #define INITIAL_CONTENT CHART
+#define BUTTON_NO "NAO"
+#define BUTTON_SAVE "SALVAR"
 
 content_manager_t content_manager_init(controller_data_t controller_data, QueueHandle_t incoming_queue_commands, QueueHandle_t outgoing_queue_lcd, lv_obj_t *header, screen_manager_t screen_manager) {
     content_manager_t content_manager = (content_manager_t)malloc(sizeof(s_content_manager_t));
@@ -52,6 +54,8 @@ void content_manager_update(content_manager_t content_manager, controller_event_
             lv_label_set_text(content_manager->btn_stage->label, controller_stage_to_string_verb(content_manager->btn_stage->value));
 
             lv_label_set_text(content_manager->status_label, controller_stage_to_string(content_manager->controller_data->read_stage));
+
+            lv_label_set_text(content_manager->timer_label, "00:00");
             break;
 
         case TIMER_VALUE_EVENT: {
@@ -68,13 +72,11 @@ void content_manager_update(content_manager_t content_manager, controller_event_
             lv_label_set_text_fmt(content_manager->timer_label, "%02d:%02d", (int)minutes, (int)(seconds % 60));
             break;
         }
-        case SENSOR_VALUE_EVENT:
-        case ACTUATOR_VALUE_EVENT:
-            content_update(content_manager->current_content, incoming_event);
-            break;
 
         default:;
     }
+
+    content_update(content_manager->current_content, incoming_event);
 }
 
 void clear_content(content_manager_t content_manager) {
@@ -136,6 +138,53 @@ lv_obj_t *btn_content_create(lv_obj_t *parent, content_manager_t content_manager
     return label_btn;
 }
 
+void popup_details_create(content_manager_t content_manager) {
+    static const char *btns[] = {BUTTON_NO, BUTTON_SAVE, ""};
+
+    lv_obj_t *mbox = lv_msgbox_create(lv_scr_act(), "Atencao", "Salvar Receita?", btns, false);
+    // lv_obj_add_event_cb(mbox, mbox_event_handler, LV_EVENT_VALUE_CHANGED, content_manager);
+    lv_obj_center(mbox);
+
+    lv_obj_t *ta = lv_textarea_create(lv_scr_act());
+    lv_obj_align(ta, LV_ALIGN_TOP_MID, 0, 0);
+    lv_textarea_set_one_line(ta, true);
+    lv_obj_add_state(ta, LV_STATE_FOCUSED);
+
+    lv_obj_t *btn = lv_btn_create(lv_scr_act());
+    lv_obj_align(btn, LV_ALIGN_TOP_MID, 0, 50);
+    lv_obj_t *btn_label = lv_label_create(btn);
+    lv_label_set_text(btn_label, "SALVAR");
+
+    lv_obj_t *kb = lv_keyboard_create(lv_scr_act());
+    lv_obj_set_size(kb, LV_HOR_RES, LV_VER_RES / 2);
+    lv_keyboard_set_textarea(kb, ta);
+}
+
+void mbox_event_handler(lv_event_t *e) {
+    content_manager_t content_manager = (content_manager_t)lv_event_get_user_data(e);
+    lv_obj_t *obj = lv_event_get_current_target(e);
+
+    incoming_data_t incoming_data = incoming_data_init();
+    incoming_data->reader_type = LCD;
+    incoming_data->choice = ERASE;
+
+    if (strcmp(lv_msgbox_get_active_btn_text(obj), BUTTON_SAVE) == 0) {
+        lv_msgbox_close(obj);
+        popup_details_create(content_manager);
+    } else {
+        xQueueSend(content_manager->incoming_queue_commands, &incoming_data, portMAX_DELAY);
+        lv_msgbox_close(obj);
+    }
+}
+
+void popup_prompt_create(content_manager_t content_manager) {
+    static const char *btns[] = {BUTTON_NO, BUTTON_SAVE, ""};
+
+    lv_obj_t *mbox = lv_msgbox_create(lv_scr_act(), "Atencao", "Salvar Receita?", btns, false);
+    lv_obj_add_event_cb(mbox, mbox_event_handler, LV_EVENT_VALUE_CHANGED, content_manager);
+    lv_obj_center(mbox);
+}
+
 void btn_stage_event_handler(lv_event_t *e) {
     lv_event_code_t code = lv_event_get_code(e);
     content_manager_t content_manager = (content_manager_t)lv_event_get_user_data(e);
@@ -147,6 +196,10 @@ void btn_stage_event_handler(lv_event_t *e) {
     incoming_data->state = ON;
     incoming_data->mode = MANUAL;
     incoming_data->stage = btn_stage->value;
+
+    if (btn_stage->value == STAGE_OFF) {
+        popup_prompt_create(content_manager);
+    }
     xQueueSend(content_manager->incoming_queue_commands, &incoming_data, portMAX_DELAY);
 }
 

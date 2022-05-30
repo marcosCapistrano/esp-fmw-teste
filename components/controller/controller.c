@@ -83,7 +83,6 @@ void controller_task(void *pvParameters) {
                         ESP_LOGE(TAG, "AUTO");
                         controller_data->read_mode = AUTO;
                         break;
-
                     default:;
                 }
             }
@@ -110,6 +109,7 @@ void controller_task(void *pvParameters) {
                         pre_heating_params_t pre_heating_params = malloc(sizeof(s_pre_heating_params_t));
                         pre_heating_params->adc = controller->adc;
                         pre_heating_params->controller_data = controller_data;
+                        pre_heating_params->event_broadcast_queue = event_broadcast_queue;
 
                         ESP_LOGE(TAG, "PRE_HEATING");
                         xTaskCreatePinnedToCore(pre_heating_task, "PRE_HEATING", 2048, pre_heating_params, 3, &pre_heating_task_handle, 1);
@@ -178,6 +178,22 @@ void controller_task(void *pvParameters) {
                 }
             }
 
+            if (incoming_data->choice != CHOICE_NONE) {
+                switch (incoming_data->choice) {
+                    case SAVE: {
+                        ESP_LOGE(TAG, "Received save");
+                        break;
+                    }
+
+                    case ERASE: {
+                        ESP_LOGE(TAG, "Received erase");
+                        break;
+                    }
+
+                    default:;
+                }
+            }
+
             if (controller_data->read_state == ON) {
                 if (controller_data->read_mode == MANUAL) {
                     if (controller_data->read_stage == PRE_HEATING || controller_data->read_stage == START) {
@@ -186,24 +202,29 @@ void controller_task(void *pvParameters) {
                             controller_data->read_potencia = incoming_data->write_potencia;
                             ESP_LOGE("5", "read_potencia %d", controller_data->read_potencia);
                             pwm_set_duty(controller->potencia, controller_data->read_potencia);
+
+                            broadcast_event = ACTUATOR_VALUE_EVENT;
+                            xQueueSend(event_broadcast_queue, &broadcast_event, portMAX_DELAY);
                         }
 
                         if (incoming_data->write_cilindro != -1) {
                             ESP_LOGE("CILINDRO", "%d", incoming_data->write_cilindro);
                             controller_data->read_cilindro = incoming_data->write_cilindro;
                             pwm_set_duty(controller->cilindro, controller_data->read_cilindro);
+                            broadcast_event = ACTUATOR_VALUE_EVENT;
+                            xQueueSend(event_broadcast_queue, &broadcast_event, portMAX_DELAY);
                         }
 
                         if (incoming_data->write_turbina != -1) {
                             ESP_LOGE("TURBINA", "%d", incoming_data->write_turbina);
                             controller_data->read_turbina = incoming_data->write_turbina;
                             pwm_set_duty(controller->turbina, controller_data->read_turbina);
+                            broadcast_event = ACTUATOR_VALUE_EVENT;
+                            xQueueSend(event_broadcast_queue, &broadcast_event, portMAX_DELAY);
                         }
                     }
                 }
             }
-
-            controller_data->read_temp_ar = adc_sample(controller->adc);
         }
     }
 }
@@ -215,10 +236,28 @@ void pre_heating_task(void *pvParameters) {
 
     adc_t adc = pre_heating_params->adc;
 
+    controller_event_t broadcast_event;
+    QueueHandle_t event_broadcast_queue = pre_heating_params->event_broadcast_queue;
+
+    int sample_counter = 0;
+    int adc_reading = 0;
+
     for (;;) {
-        *pre_heating_temp = adc_sample(adc);
-        ESP_LOGI(TAG, "Pre Heating Task");
-        controller_data->read_temp_ar = *pre_heating_temp;  // Para que o display consiga ver
+        adc_reading += adc_sample(adc);
+        sample_counter++;
+
+        if (sample_counter >= 10) {
+            adc_reading /= 10;
+
+            controller_data->read_temp_grao = adc_reading;  // Para que o display consiga ver
+            *pre_heating_temp = adc_reading;
+
+            broadcast_event = SENSOR_VALUE_EVENT;
+            xQueueSend(event_broadcast_queue, &broadcast_event, portMAX_DELAY);
+            sample_counter = 0;
+            adc_reading = 0;
+        }
+
         vTaskDelay(pdMS_TO_TICKS(100));
     }
 }
@@ -237,24 +276,55 @@ void torra_task(void *pvParameters) {
     int64_t task_start_time = esp_timer_get_time();
     int64_t last_timer_period = task_start_time;
 
+    int temp_ar_reading = 0;
+    int last_ar_reading = 0;
+
+    int temp_grao_reading = 0;
+    int last_grao_reading = 0;
+
+    int sample_counter = 0;
+
     read_recipe_data->data = recipe_data_node_init(controller_data->read_potencia, controller_data->read_cilindro, controller_data->read_turbina, 0);
     read_sensor_data->data = sensor_data_node_init(controller_data->read_temp_ar, controller_data->read_temp_grao, 0, 0, 0);
 
     for (;;) {
-        ESP_LOGI(TAG, "Torra Task");
+        temp_ar_reading += adc_sample(adc);
+        temp_grao_reading += adc_sample(adc);
+
+        sample_counter++;
+
+        if (sample_counter >= 10) {
+            temp_ar_reading /= 10;
+            temp_grao_reading /= 10;
+
+            controller_data->read_temp_ar = temp_ar_reading;
+            controller_data->read_temp_grao = temp_grao_reading;
+
+            controller_data->read_delta_ar = temp_ar_reading - last_ar_reading;
+            controller_data->read_delta_grao = temp_grao_reading - last_grao_reading;
+
+            sample_counter = 0;
+        }
+
         int64_t elapsed_time = esp_timer_get_time() - task_start_time;
         controller_data->read_torra_time = elapsed_time;
 
-        if ((esp_timer_get_time() - last_timer_period) / 10E5 > 5) {
+        if ((esp_timer_get_time() - last_timer_period) / 10E5 > 30) {
             last_timer_period = esp_timer_get_time();
+
+            last_ar_reading = temp_ar_reading;
+            last_grao_reading = temp_grao_reading;
             push_recipe_data(&read_recipe_data->data, controller_data->read_potencia, controller_data->read_cilindro, controller_data->read_turbina, elapsed_time);
-            push_sensor_data(&read_sensor_data->data, controller_data->read_temp_ar, controller_data->read_temp_grao, 0, 0, elapsed_time);
+            push_sensor_data(&read_sensor_data->data, controller_data->read_temp_ar, controller_data->read_temp_grao, controller_data->read_delta_ar, controller_data->read_delta_grao, elapsed_time);
         } else if ((esp_timer_get_time() - last_timer_period) / 10E5 > 1) {
             broadcast_event = TIMER_VALUE_EVENT;
             xQueueSend(event_broadcast_queue, &broadcast_event, portMAX_DELAY);
+
+            broadcast_event = SENSOR_VALUE_EVENT;
+            xQueueSend(event_broadcast_queue, &broadcast_event, portMAX_DELAY);
         }
 
-        vTaskDelay(pdMS_TO_TICKS(500));
+        vTaskDelay(pdMS_TO_TICKS(100));
     }
 }
 
@@ -269,7 +339,6 @@ void cooler_task(void *pvParameters) {
     int64_t last_timer_period = task_start_time;
 
     for (;;) {
-        ESP_LOGI(TAG, "Resf Task");
         int64_t elapsed_time = esp_timer_get_time() - task_start_time;
         controller_data->read_resf_time = elapsed_time;
 

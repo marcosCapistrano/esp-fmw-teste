@@ -9,6 +9,7 @@
 typedef struct s_content_chart_t *content_chart_t;
 typedef struct s_content_chart_t {
 	chart_obj_t chart_obj;
+	content_manager_t content_manager;
 } s_content_chart_t;
 
 content_i chart_as_content;

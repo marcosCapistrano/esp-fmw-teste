@@ -29,7 +29,7 @@ typedef struct s_chart_obj_t {
 
     lv_chart_series_t *temp_grao_series;
     lv_chart_series_t *temp_ar_series;
-    lv_chart_series_t *grad_series;
+    lv_chart_series_t *delta_ar_series;
     lv_chart_series_t *delta_grao_series;
 
     int point_count;
@@ -53,6 +53,7 @@ lv_obj_t *timer_label_create(lv_obj_t *parent);
 
 void chart_draw_pre_heating(chart_obj_t chart_obj, int value);
 void chart_draw_start(chart_obj_t chart_obj, controller_data_t controller_data);
+void chart_reset(chart_obj_t chart_obj);
 
 static void header_btn_back_event_handler(lv_event_t *e);
 #endif

@@ -98,7 +98,7 @@ chart_obj_t chart_create(lv_obj_t *parent) {
 
     lv_chart_series_t *temp_ar_series = lv_chart_add_series(chart, lv_palette_main(LV_PALETTE_GREEN), LV_CHART_AXIS_PRIMARY_Y);      // temp ar
     lv_chart_series_t *temp_grao_series = lv_chart_add_series(chart, lv_palette_main(LV_PALETTE_BLUE), LV_CHART_AXIS_PRIMARY_Y);     // temp grao
-    lv_chart_series_t *grad_series = lv_chart_add_series(chart, lv_palette_main(LV_PALETTE_PINK), LV_CHART_AXIS_PRIMARY_Y);          // grad
+    lv_chart_series_t *delta_ar_series = lv_chart_add_series(chart, lv_palette_main(LV_PALETTE_PINK), LV_CHART_AXIS_PRIMARY_Y);          // grad
     lv_chart_series_t *delta_grao_series = lv_chart_add_series(chart, lv_palette_main(LV_PALETTE_PINK), LV_CHART_AXIS_SECONDARY_Y);  // grad
 
     // lv_chart_set_axis_tick(chart, LV_CHART_AXIS_PRIMARY_X, 5, 2, 2, 5, true, 20);
@@ -108,7 +108,7 @@ chart_obj_t chart_create(lv_obj_t *parent) {
     chart_obj->chart = chart;
     chart_obj->temp_ar_series = temp_ar_series;
     chart_obj->temp_grao_series = temp_grao_series;
-    chart_obj->grad_series = grad_series;
+    chart_obj->delta_ar_series = delta_ar_series;
     chart_obj->delta_grao_series = delta_grao_series;
     chart_obj->point_count = 2;
     chart_obj->upper_limit = 10;
@@ -117,60 +117,83 @@ chart_obj_t chart_create(lv_obj_t *parent) {
     return chart_obj;
 }
 
-// void chart_draw_pre_heating(chart_obj_t chart_obj, int value) {
-//     lv_obj_t *chart = chart_obj->chart;
+void chart_draw_pre_heating(chart_obj_t chart_obj, int value) {
+    lv_obj_t *chart = chart_obj->chart;
 
-//     lv_chart_set_axis_tick(chart, LV_CHART_AXIS_PRIMARY_Y, 5, 2, 2, 6, true, 40);
-//     lv_chart_set_range(chart, LV_CHART_AXIS_PRIMARY_Y, 0, value);
+    lv_chart_set_axis_tick(chart, LV_CHART_AXIS_PRIMARY_Y, 5, 2, 2, 6, true, 40);
+    lv_chart_set_range(chart, LV_CHART_AXIS_PRIMARY_Y, 0, value);
+    lv_chart_set_point_count(chart, 1);
 
-//     chart_obj->temp_ar_series->y_points[0] = value;
-//     lv_chart_refresh(chart);
-// }
+    chart_obj->temp_ar_series->y_points[0] = value;
+    lv_chart_refresh(chart);
+}
 
-// void chart_draw_start(chart_obj_t chart_obj, controller_data_t controller_data) {
-//     lv_obj_t *chart = chart_obj->chart;
-//     sensor_data_t sensor_data = controller_data->read_sensor_data;
-//     int *point_count = &chart_obj->point_count;
-//     int *lower_limit = &chart_obj->lower_limit;
-//     int *upper_limit = &chart_obj->upper_limit;
 
-//     lv_chart_series_t *temp_grao_series = chart_obj->temp_grao_series;
-//     lv_chart_series_t *temp_ar_series = chart_obj->temp_ar_series;
-//     lv_chart_series_t *grad_series = chart_obj->grad_series;
-//     lv_chart_series_t *delta_grao_series = chart_obj->delta_grao_series;
+void chart_draw_start(chart_obj_t chart_obj, controller_data_t controller_data) {
+    lv_obj_t *chart = chart_obj->chart;
+    sensor_data_t sensor_data = controller_data->read_sensor_data;
+    int *point_count = &chart_obj->point_count;
+    int *lower_limit = &chart_obj->lower_limit;
+    int *upper_limit = &chart_obj->upper_limit;
 
-//     int counter = 0;
-//     sensor_data_node_t node = sensor_data->data;
-//     while (node != NULL) {
-//         int curr_temp_ar = node->temp_ar;
-//         int curr_temp_grao = node->temp_grao;
+    lv_chart_series_t *temp_grao_series = chart_obj->temp_grao_series;
+    lv_chart_series_t *temp_ar_series = chart_obj->temp_ar_series;
+    lv_chart_series_t *delta_ar_series = chart_obj->delta_ar_series;
+    lv_chart_series_t *delta_grao_series = chart_obj->delta_grao_series;
 
-//         if (curr_temp_ar < *lower_limit) {
-//             *lower_limit = curr_temp_ar;
-//         } else if (curr_temp_ar > *upper_limit) {
-//             *upper_limit = curr_temp_ar;
-//         }
+    int counter = 0;
+    sensor_data_node_t node = sensor_data->data;
+    while (node != NULL) {
+        int curr_temp_ar = node->temp_ar;
+        int curr_temp_grao = node->temp_grao;
+        int curr_delta_ar = node->delta_ar;
+        int curr_delta_grao = node->delta_grao;
 
-//         if (curr_temp_grao < *lower_limit) {
-//             *lower_limit = curr_temp_grao;
-//         } else if (curr_temp_grao > *upper_limit) {
-//             *upper_limit = curr_temp_grao;
-//         }
+        if (curr_temp_ar < *lower_limit) {
+            *lower_limit = curr_temp_ar;
+        } else if (curr_temp_ar > *upper_limit) {
+            *upper_limit = curr_temp_ar;
+        }
 
-//         temp_ar_series->y_points[counter] = node->temp_ar;
-//         temp_grao_series->y_points[counter] = node->temp_grao;
-//         grad_series->y_points[counter] = 3;
-//         delta_grao_series->y_points[counter] = 3;
-//         node = node->next;
-//         counter++;
-//     }
-//     *point_count = counter+1;
+        if (curr_temp_grao < *lower_limit) {
+            *lower_limit = curr_temp_grao;
+        } else if (curr_temp_grao > *upper_limit) {
+            *upper_limit = curr_temp_grao;
+        }
 
-//     lv_chart_set_axis_tick(chart, LV_CHART_AXIS_PRIMARY_X, 5, 2, *point_count, 6, true, 10);
-//     lv_chart_set_axis_tick(chart, LV_CHART_AXIS_PRIMARY_Y, 5, 2, *upper_limit / 100, 6, true, 40);
+        if (curr_delta_ar < *lower_limit) {
+            *lower_limit = curr_delta_ar;
+        } else if (curr_delta_ar > *upper_limit) {
+            *upper_limit = curr_delta_ar;
+        }
 
-//     lv_chart_set_range(chart, LV_CHART_AXIS_PRIMARY_Y, *lower_limit, *upper_limit);
+        if (curr_delta_grao < *lower_limit) {
+            *lower_limit = curr_delta_grao;
+        } else if (curr_delta_grao > *upper_limit) {
+            *upper_limit = curr_delta_grao;
+        }
 
-//     // lv_chart_set_point_count(chart, *point_count);
-//     lv_chart_refresh(chart);
-// }
+        temp_ar_series->y_points[counter] = node->temp_ar;
+        temp_grao_series->y_points[counter] = node->temp_grao;
+        delta_ar_series->y_points[counter] = node->delta_grao;
+        delta_grao_series->y_points[counter] = node->delta_ar;
+        node = node->next;
+        counter++;
+    }
+    *point_count = counter+2;
+
+    lv_chart_set_axis_tick(chart, LV_CHART_AXIS_PRIMARY_X, 5, 2, *point_count, 6, true, 10);
+    lv_chart_set_axis_tick(chart, LV_CHART_AXIS_PRIMARY_Y, 5, 2, *upper_limit / 100, 6, true, 40);
+
+    lv_chart_set_range(chart, LV_CHART_AXIS_PRIMARY_Y, *lower_limit, *upper_limit);
+
+    lv_chart_set_point_count(chart, *point_count);
+    lv_chart_refresh(chart);
+}
+
+void chart_reset(chart_obj_t chart_obj) {
+    lv_obj_t *chart = chart_obj->chart;
+
+    lv_chart_set_point_count(chart, 0);
+    lv_chart_refresh(chart);
+}

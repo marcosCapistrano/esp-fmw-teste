@@ -28,7 +28,7 @@ void app_main(void) {
     }
     ESP_ERROR_CHECK(nvs);
 
-    // database_t db = db_init();
+    database_t db = db_init();
 
     incoming_queue_commands = xQueueCreate(10, sizeof(incoming_data_t));
     outgoing_queue_lcd = xQueueCreate(5, sizeof(outgoing_data_t));
