@@ -3,11 +3,12 @@
 #include <lvgl.h>
 #include <lvgl_esp32_drivers/lvgl_helpers.h>
 
+#include "common.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
+#include "freertos/event_groups.h"
 #include "freertos/semphr.h"
 #include "freertos/task.h"
-#include "manual_mode.h"
 #include "screen_manager.h"
 
 #define AUSYX_HOR_RES 480
@@ -24,8 +25,11 @@ static esp_timer_handle_t periodic_timer;
 
 static void lv_tick_task(void *arg);
 
-lcd_gui_t lcd_gui_init(controller_data_t controller_data, QueueHandle_t incoming_queue_commands, QueueHandle_t outgoing_queue_lcd) {
+lcd_gui_t lcd_gui_init(controller_data_t controller_data, QueueHandle_t incoming_queue_commands, QueueHandle_t outgoing_queue_lcd, QueueHandle_t event_broadcast_queue, EventGroupHandle_t event_group_sync) {
     lcd_gui_t lcd_gui = malloc(sizeof(s_lcd_gui_t));
+
+    lcd_gui->event_group_sync = event_group_sync;
+    lcd_gui->event_broadcast_queue = event_broadcast_queue;
 
     lv_init();
     lvgl_driver_init();
@@ -62,23 +66,32 @@ lcd_gui_t lcd_gui_init(controller_data_t controller_data, QueueHandle_t incoming
     return lcd_gui;
 }
 
-void lcd_gui_update_task(void *pvParameters) {
-    lcd_gui_t lcd_gui = (lcd_gui_t)pvParameters;
+// void lcd_gui_update_task(void *pvParameters) {
+//     lcd_gui_t lcd_gui = (lcd_gui_t)pvParameters;
 
-    screen_manager_t screen_manager = lcd_gui->screen_manager;
-    controller_data_t controller_data = lcd_gui->controller_data;
+//     screen_manager_t screen_manager = lcd_gui->screen_manager;
+//     controller_data_t controller_data = lcd_gui->controller_data;
 
-    for (;;) {
-        ESP_LOGI(TAG, "Update Task..");
-        screen_manager_update(screen_manager, controller_data);
+//     EventGroupHandle_t event_group_sync = lcd_gui->event_group_sync;
+//     QueueHandle_t event_broadcast_queue = lcd_gui->event_broadcast_queue;
 
-        vTaskDelay(pdMS_TO_TICKS(350));
-    }
-}
+//     for (;;) {
+//         ESP_LOGI(TAG, "Update Task..");
+
+//         xEventGroupSync(event_group_sync, SERVER_EVENT_BIT, SYNC_BITS, pdTICKS_TO_MS(150));
+
+//         vTaskDelay(pdMS_TO_TICKS(350));
+//     }
+// }
 
 void lcd_gui_draw_task(void *pvParameters) {
     lcd_gui_t lcd_gui = (lcd_gui_t)pvParameters;
     SemaphoreHandle_t xGuiSemaphore = xSemaphoreCreateMutex();
+
+    EventGroupHandle_t event_group_sync = lcd_gui->event_group_sync;
+    QueueHandle_t event_broadcast_queue = lcd_gui->event_broadcast_queue;
+
+    controller_event_t incoming_event;
 
     for (;;) {
         if (pdTRUE == xSemaphoreTake(xGuiSemaphore, portMAX_DELAY)) {
@@ -86,7 +99,12 @@ void lcd_gui_draw_task(void *pvParameters) {
             xSemaphoreGive(xGuiSemaphore);
         }
 
-        ESP_LOGI(TAG, "Draw Task..");
+        if (xQueuePeek(event_broadcast_queue, &incoming_event, 0) == pdPASS) {
+            screen_manager_update(lcd_gui->screen_manager, incoming_event);
+            xEventGroupSync(event_group_sync, LCD_EVENT_BIT, LCD_EVENT_BIT, portMAX_DELAY);
+
+            xQueueReceive(event_broadcast_queue, &incoming_event, 0); //Remove da queue..
+        }
 
         vTaskDelay(pdMS_TO_TICKS(LV_TICK_PERIOD_MS));
     }

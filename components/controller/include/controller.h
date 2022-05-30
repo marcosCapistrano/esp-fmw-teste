@@ -28,9 +28,8 @@ typedef struct s_controller_t {
     QueueHandle_t outgoing_queue_lcd;
     QueueHandle_t outgoing_queue_server;
     QueueHandle_t incoming_queue_commands;
+    QueueHandle_t event_broadcast_queue;
     
-    esp_timer_handle_t timer_handle;
-
     pwm_t potencia;
     pwm_t cilindro;
     pwm_t turbina;
@@ -50,6 +49,7 @@ typedef struct s_pre_heating_params_t *pre_heating_params_t;
 
 typedef struct s_torra_params_t {
     controller_data_t controller_data;
+    QueueHandle_t event_broadcast_queue;
 
     adc_t adc;
 } s_torra_params_t;
@@ -58,11 +58,12 @@ typedef struct s_torra_params_t *torra_params_t;
 
 typedef struct s_cooler_params_t {
     controller_data_t controller_data;
+    QueueHandle_t event_broadcast_queue;
 } s_cooler_params_t;
 
 typedef struct s_cooler_params_t *cooler_params_t;
 
-controller_t controller_init(QueueHandle_t incoming_queue_commands, QueueHandle_t outgoing_queue_lcd);
+controller_t controller_init(QueueHandle_t incoming_queue_commands, QueueHandle_t outgoing_queue_lcd, QueueHandle_t event_broadcast_queue);
 void controller_task(void *pvParameters); 
 
 static recipe_data_t recipe_data_init();

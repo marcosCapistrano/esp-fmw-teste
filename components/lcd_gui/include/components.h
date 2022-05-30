@@ -6,17 +6,6 @@
 #include "common_controller.h"
 #include "lvgl.h"
 #include "screen_manager.h"
-#include "manual_mode.h"
-
-typedef struct s_btn_stage_t {
-    lv_obj_t *btn;
-    lv_obj_t *label;
-
-    controller_stage_t read_value;
-    controller_stage_t write_value;
-} s_btn_stage_t;
-
-typedef struct s_btn_stage_t *btn_stage_t;
 
 typedef struct s_label_timer_t {
     lv_obj_t *label;
@@ -58,11 +47,12 @@ typedef struct s_content_manager_t *content_manager_t;
 lv_obj_t *btn_container_create(lv_obj_t *parent);
 lv_obj_t *container_create(lv_obj_t *parent);
 lv_obj_t *header_create(lv_obj_t *parent, const char *title, screen_manager_t screen_manager);
-status_obj_t status_create(lv_obj_t *parent);
-void chart_create(content_manager_t content_manager, lv_obj_t *parent);
-btn_stage_t btn_stage_create(lv_obj_t *parent);
-label_timer_t label_timer_create(lv_obj_t *parent);
+lv_obj_t *status_create(lv_obj_t *parent);
+chart_obj_t chart_create(lv_obj_t *parent);
+lv_obj_t *timer_label_create(lv_obj_t *parent);
 
 void chart_draw_pre_heating(chart_obj_t chart_obj, int value);
 void chart_draw_start(chart_obj_t chart_obj, controller_data_t controller_data);
+
+static void header_btn_back_event_handler(lv_event_t *e);
 #endif

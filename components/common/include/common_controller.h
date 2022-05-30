@@ -5,6 +5,15 @@
 #include <time.h>
 
 typedef enum {
+    STATE_EVENT,
+    STAGE_EVENT,
+    MODE_EVENT,
+    TIMER_VALUE_EVENT,
+    SENSOR_VALUE_EVENT,
+    ACTUATOR_VALUE_EVENT,
+} controller_event_t;
+
+typedef enum {
     STATE_NONE,
     ON,
     OFF
@@ -21,7 +30,6 @@ typedef enum {
     PRE_HEATING,
     START,
     COOLER,
-    END,
     STAGE_NONE,
 } controller_stage_t;
 
@@ -125,12 +133,9 @@ typedef struct s_incoming_data_t *incoming_data_t;
     Estrutura de dados utilizada pelo controller para enviar notificações para os readers
 */
 
-typedef struct s_outgoing_data_t {
-    time_t timestamp;
-    const char *message;
-} s_outgoing_data_t;
-
 typedef struct s_outgoing_data_t *outgoing_data_t;
+typedef struct s_outgoing_data_t {
+} s_outgoing_data_t;
 
 const char *controller_stage_to_string(controller_stage_t stage);
 const char *controller_stage_to_string_verb(controller_stage_t stage);

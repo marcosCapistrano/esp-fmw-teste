@@ -1,4 +1,5 @@
 #include "common_controller.h"
+
 #include "esp_log.h"
 
 const char *controller_stage_to_string(controller_stage_t stage) {
@@ -11,13 +12,9 @@ const char *controller_stage_to_string(controller_stage_t stage) {
         case START:
             return "TORRA EM ANDAMENTO";
             break;
-        case END:
-            return "FINALIZANDO";
-            break;
         case COOLER:
             return "RESFRIANDO";
             break;
-
         default:
             return "UNKNOWN";
             break;
@@ -29,19 +26,14 @@ const char *controller_stage_to_string_verb(controller_stage_t stage) {
         case STAGE_OFF:
             return "DESLIGAR";
             break;
-            
         case PRE_HEATING:
             return "PRE-AQUECER";
         case START:
             return "INICIAR";
             break;
-        case END:
-            return "FINALIZAR";
-            break;
         case COOLER:
             return "RESFRIADOR";
             break;
-
         default:
             return "---";
             break;

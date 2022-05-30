@@ -35,6 +35,8 @@
     "future": "c",
     "esp_system.h": "c",
     "esp_timer.h": "c",
-    "hash_map": "c"
+    "hash_map": "c",
+    "*.ipp": "c",
+    "screen_manager.h": "c"
   }
 }

@@ -6,6 +6,7 @@
 #include "esp_log.h"
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
+#include "freertos/event_groups.h"
 #include "freertos/semphr.h"
 #include "freertos/timers.h"
 #include "pwm.h"
@@ -21,7 +22,7 @@ void pre_heating_task(void *pvParameters);
 void torra_task(void *pvParameters);
 void cooler_task(void *pvParameters);
 
-controller_t controller_init(QueueHandle_t incoming_queue_commands, QueueHandle_t outgoing_queue_lcd) {
+controller_t controller_init(QueueHandle_t incoming_queue_commands, QueueHandle_t outgoing_queue_lcd, QueueHandle_t event_broadcast_queue) {
     controller_t controller = malloc(sizeof(s_controller_t));
 
     controller->potencia = pwm_init("POTENCIA", MCPWM_UNIT, MCPWM_TIMER_POTENCIA, MCPWM_IO_SIGNAL_POTENCIA, MCPWM_GPIO_NUM_POTENCIA);
@@ -29,20 +30,10 @@ controller_t controller_init(QueueHandle_t incoming_queue_commands, QueueHandle_
     controller->turbina = pwm_init("TURBINA", MCPWM_UNIT, MCPWM_TIMER_TURBINA, MCPWM_IO_SIGNAL_TURBINA, MCPWM_GPIO_NUM_TURBINA);
     controller->adc = adc_init("ADC TEMP", ADC_CHANNEL_6, ADC_WIDTH_BIT_12, ADC_ATTEN_DB_0);
 
-    esp_timer_create_args_t timer_conf = {
-        .callback = NULL,
-        .arg = NULL,
-        .dispatch_method = ESP_TIMER_TASK,
-        .name = "TIMER",
-        .skip_unhandled_events = true};
-
-    esp_timer_create(&timer_conf, &timer_handle);
-    esp_timer_start_once(timer_handle, portMAX_DELAY);
-
     controller->controller_data = controller_data_init();
     controller->incoming_queue_commands = incoming_queue_commands;
     controller->outgoing_queue_lcd = outgoing_queue_lcd;
-    controller->timer_handle = timer_handle;
+    controller->event_broadcast_queue = event_broadcast_queue;
 
     return controller;
 }
@@ -51,6 +42,8 @@ void controller_task(void *pvParameters) {
     controller_t controller = (controller_t)pvParameters;
     controller_data_t controller_data = controller->controller_data;
     QueueHandle_t incoming_queue_commands = controller->incoming_queue_commands;
+    QueueHandle_t event_broadcast_queue = controller->event_broadcast_queue;
+    controller_event_t broadcast_event;
 
     TaskHandle_t pre_heating_task_handle;
     TaskHandle_t torra_task_handle;
@@ -97,14 +90,19 @@ void controller_task(void *pvParameters) {
 
             if (incoming_data->stage != STAGE_NONE) {
                 switch (incoming_data->stage) {
-                    case STAGE_OFF:
-                        ESP_LOGE(TAG, "STAGE_OFF");
-                        controller_data->read_state = OFF;
-                        controller_data->read_mode = MODE_NONE;
-                        controller_data->read_stage = STAGE_OFF;
-                        break;
+                    case PRE_HEATING: {
+                        esp_timer_create_args_t timer_conf = {
+                            .callback = NULL,
+                            .arg = NULL,
+                            .dispatch_method = ESP_TIMER_TASK,
+                            .name = "TIMER",
+                            .skip_unhandled_events = true};
 
-                    case PRE_HEATING:
+                        esp_timer_create(&timer_conf, &timer_handle);
+                        esp_timer_start_once(timer_handle, portMAX_DELAY);
+                        timer_handle = timer_handle;
+                        controller_data->start_time = esp_timer_get_time();
+
                         controller_data->read_stage = PRE_HEATING;
                         controller_data->read_recipe_data = recipe_data_init();
                         controller_data->read_sensor_data = sensor_data_init();
@@ -114,8 +112,12 @@ void controller_task(void *pvParameters) {
                         pre_heating_params->controller_data = controller_data;
 
                         ESP_LOGE(TAG, "PRE_HEATING");
-                        xTaskCreatePinnedToCore(pre_heating_task, "PRE_HEATING", 2048, pre_heating_params, 2, &pre_heating_task_handle, 1);
+                        xTaskCreatePinnedToCore(pre_heating_task, "PRE_HEATING", 2048, pre_heating_params, 3, &pre_heating_task_handle, 1);
+
+                        broadcast_event = STAGE_EVENT;
+                        xQueueSend(event_broadcast_queue, &broadcast_event, portMAX_DELAY);
                         break;
+                    }
 
                     case START:
                         ESP_LOGE(TAG, "START");
@@ -127,9 +129,14 @@ void controller_task(void *pvParameters) {
                         torra_params_t torra_params = malloc(sizeof(s_torra_params_t));
                         torra_params->adc = controller->adc;
                         torra_params->controller_data = controller_data;
+                        torra_params->event_broadcast_queue = event_broadcast_queue;
                         controller_data->start_time = esp_timer_get_time();
 
-                        xTaskCreatePinnedToCore(torra_task, "TORRA", 2048, torra_params, 4, &torra_task_handle, 1);
+                        xTaskCreatePinnedToCore(torra_task, "TORRA", 2048, torra_params, 3, &torra_task_handle, 1);
+
+                        broadcast_event = STAGE_EVENT;
+                        xQueueSend(event_broadcast_queue, &broadcast_event, portMAX_DELAY);
+
                         break;
 
                     case COOLER:
@@ -146,19 +153,27 @@ void controller_task(void *pvParameters) {
 
                         cooler_params_t cooler_params = malloc(sizeof(s_cooler_params_t));
                         cooler_params->controller_data = controller_data;
-                        xTaskCreatePinnedToCore(cooler_task, "COOLER", 2048, cooler_params, 4, &cooler_task_handle, 1);
+                        cooler_params->event_broadcast_queue = event_broadcast_queue;
+                        xTaskCreatePinnedToCore(cooler_task, "COOLER", 2048, cooler_params, 3, &cooler_task_handle, 1);
+
+                        broadcast_event = STAGE_EVENT;
+                        xQueueSend(event_broadcast_queue, &broadcast_event, portMAX_DELAY);
                         break;
 
-                    case END:
-                        ESP_LOGE(TAG, "END");
-
+                    case STAGE_OFF:
+                        ESP_LOGE(TAG, "STAGE_OFF");
                         vTaskDelete(cooler_task_handle);
-                        controller_data->read_stage = END;
-                        controller_data->elapsed_time = 0;
+                        controller_data->read_state = OFF;
+                        controller_data->read_mode = MODE_NONE;
+                        controller_data->read_stage = STAGE_OFF;
 
-                        // FREE MEMORY
+                        controller_data->elapsed_time = esp_timer_get_time() - controller_data->start_time;
+                        esp_timer_delete(timer_handle);
+
+                        // FREE MEMORY?
+                        broadcast_event = STAGE_EVENT;
+                        xQueueSend(event_broadcast_queue, &broadcast_event, portMAX_DELAY);
                         break;
-
                     default:;
                 }
             }
@@ -215,6 +230,9 @@ void torra_task(void *pvParameters) {
     recipe_data_t read_recipe_data = controller_data->read_recipe_data;
     sensor_data_t read_sensor_data = controller_data->read_sensor_data;
 
+    QueueHandle_t event_broadcast_queue = torra_params->event_broadcast_queue;
+    controller_event_t broadcast_event;
+
     adc_t adc = torra_params->adc;
     int64_t task_start_time = esp_timer_get_time();
     int64_t last_timer_period = task_start_time;
@@ -226,12 +244,17 @@ void torra_task(void *pvParameters) {
         ESP_LOGI(TAG, "Torra Task");
         int64_t elapsed_time = esp_timer_get_time() - task_start_time;
         controller_data->read_torra_time = elapsed_time;
-        controller_data->elapsed_time = elapsed_time;
 
-        push_recipe_data(&read_recipe_data->data, controller_data->read_potencia, controller_data->read_cilindro, controller_data->read_turbina, elapsed_time);
-        push_sensor_data(&read_sensor_data->data, controller_data->read_temp_ar, controller_data->read_temp_grao, 0, 0, elapsed_time);
+        if ((esp_timer_get_time() - last_timer_period) / 10E5 > 5) {
+            last_timer_period = esp_timer_get_time();
+            push_recipe_data(&read_recipe_data->data, controller_data->read_potencia, controller_data->read_cilindro, controller_data->read_turbina, elapsed_time);
+            push_sensor_data(&read_sensor_data->data, controller_data->read_temp_ar, controller_data->read_temp_grao, 0, 0, elapsed_time);
+        } else if ((esp_timer_get_time() - last_timer_period) / 10E5 > 1) {
+            broadcast_event = TIMER_VALUE_EVENT;
+            xQueueSend(event_broadcast_queue, &broadcast_event, portMAX_DELAY);
+        }
 
-        vTaskDelay(pdMS_TO_TICKS(5000));
+        vTaskDelay(pdMS_TO_TICKS(500));
     }
 }
 
@@ -239,9 +262,23 @@ void cooler_task(void *pvParameters) {
     cooler_params_t cooler_params = (cooler_params_t)pvParameters;
     controller_data_t controller_data = cooler_params->controller_data;
 
+    QueueHandle_t event_broadcast_queue = cooler_params->event_broadcast_queue;
+    controller_event_t broadcast_event;
+
+    int64_t task_start_time = esp_timer_get_time();
+    int64_t last_timer_period = task_start_time;
+
     for (;;) {
-        // controller_data->read_resf_time = elapsed_time;
-        vTaskDelay(pdMS_TO_TICKS(100));
+        ESP_LOGI(TAG, "Resf Task");
+        int64_t elapsed_time = esp_timer_get_time() - task_start_time;
+        controller_data->read_resf_time = elapsed_time;
+
+        if ((esp_timer_get_time() - last_timer_period) / 10E5 > 1) {
+            broadcast_event = TIMER_VALUE_EVENT;
+            xQueueSend(event_broadcast_queue, &broadcast_event, portMAX_DELAY);
+        }
+
+        vTaskDelay(pdMS_TO_TICKS(500));
     }
 }
 
